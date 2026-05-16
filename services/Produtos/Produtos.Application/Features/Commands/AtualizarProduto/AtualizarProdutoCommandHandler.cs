@@ -1,0 +1,22 @@
+using Arquitetura.SharedKernel.Common;
+using MediatR;
+using Produtos.Application.Abstractions;
+
+namespace Produtos.Application.Features.Commands.AtualizarProduto;
+
+internal sealed class AtualizarProdutoCommandHandler(
+    IProdutoRepository repository,
+    IUnitOfWork unitOfWork) : IRequestHandler<AtualizarProdutoCommand, Result>
+{
+    public async Task<Result> Handle(AtualizarProdutoCommand request, CancellationToken cancellationToken)
+    {
+        var produto = await repository.ObterPorIdAsync(request.Id, cancellationToken);
+        if (produto is null)
+            return Result.Failure(Error.NaoEncontrado);
+
+        produto.Atualizar(request.Nome, request.Descricao, request.Preco, request.Estoque);
+        repository.Atualizar(produto);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        return Result.Success();
+    }
+}

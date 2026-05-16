@@ -1,0 +1,19 @@
+<Solution>
+  <Project Path="arquitetura.client/arquitetura.client.esproj">
+    <Build />
+    <Deploy />
+  </Project>
+  <Project Path="Arquitetura.Server/Arquitetura.Server.csproj" />
+  <Project Path="services/Pedidos/Pedidos.Api/Pedidos.Api.csproj" />
+  <Project Path="services/Pedidos/Pedidos.Application/Pedidos.Application.csproj" />
+  <Project Path="services/Pedidos/Pedidos.Domain/Pedidos.Domain.csproj" />
+  <Project Path="services/Pedidos/Pedidos.Infrastructure/Pedidos.Infrastructure.csproj" />
+  <Project Path="services/Produtos/Produtos.Api/Produtos.Api.csproj" />
+  <Project Path="services/Produtos/Produtos.Application/Produtos.Application.csproj" />
+  <Project Path="services/Produtos/Produtos.Domain/Produtos.Domain.csproj" />
+  <Project Path="services/Produtos/Produtos.Infrastructure/Produtos.Infrastructure.csproj" />
+  <Project Path="shared/Arquitetura.SharedKernel/Arquitetura.SharedKernel.csproj" />
+  <Project Path="src/Arquitetura.Application/Arquitetura.Application.csproj" />
+  <Project Path="src/Arquitetura.Domain/Arquitetura.Domain.csproj" />
+  <Project Path="src/Arquitetura.Infrastructure/Arquitetura.Infrastructure.csproj" />
+</Solution>

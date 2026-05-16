@@ -1,0 +1,6 @@
+@Arquitetura.Server_HostAddress = http://localhost:5072
+
+GET {{Arquitetura.Server_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

@@ -1,0 +1,29 @@
+## Binários e artefatos de build
+**/bin/
+**/obj/
+**/out/
+
+## Banco de dados SQLite locais
+**/*.db
+**/*.db-shm
+**/*.db-wal
+
+## Segredos e configurações locais
+**/*secrets*.json
+**/appsettings.Development.json
+.env
+
+## Logs
+**/*.log
+
+## Visual Studio
+**/.vs/
+**/TestResults/
+
+## Node / React client
+**/node_modules/
+arquitetura.client/dist/
+arquitetura.client/.vite/
+
+## Git
+**/.git/
