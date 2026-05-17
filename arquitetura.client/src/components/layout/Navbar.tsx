@@ -1,11 +1,12 @@
 ﻿import { Link, useRouterState } from '@tanstack/react-router';
-import { Package, ShoppingCart, LayoutDashboard } from 'lucide-react';
+import { Package, ShoppingCart, LayoutDashboard, MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/produtos', label: 'Produtos', icon: Package },
   { to: '/pedidos', label: 'Pedidos', icon: ShoppingCart },
+  { to: '/cep', label: 'CEP', icon: MapPin },
 ];
 
 export function Navbar() {

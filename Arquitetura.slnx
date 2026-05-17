@@ -13,7 +13,4 @@
   <Project Path="services/Produtos/Produtos.Domain/Produtos.Domain.csproj" />
   <Project Path="services/Produtos/Produtos.Infrastructure/Produtos.Infrastructure.csproj" />
   <Project Path="shared/Arquitetura.SharedKernel/Arquitetura.SharedKernel.csproj" />
-  <Project Path="src/Arquitetura.Application/Arquitetura.Application.csproj" />
-  <Project Path="src/Arquitetura.Domain/Arquitetura.Domain.csproj" />
-  <Project Path="src/Arquitetura.Infrastructure/Arquitetura.Infrastructure.csproj" />
 </Solution>

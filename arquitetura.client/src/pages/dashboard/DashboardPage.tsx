@@ -1,5 +1,5 @@
 ﻿import { useNavigate } from '@tanstack/react-router';
-import { Package, ShoppingCart, TrendingUp, AlertTriangle } from 'lucide-react';
+import { Package, ShoppingCart, TrendingUp, AlertTriangle, MapPin } from 'lucide-react';
 import { useProdutos } from '@/hooks/useProdutos';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -52,7 +52,7 @@ export function DashboardPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-sm text-gray-500">Viso geral da plataforma</p>
+        <p className="text-sm text-gray-500">Visão geral da plataforma</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -123,6 +123,36 @@ export function DashboardPage() {
           </Button>
         </div>
       )}
+
+      {/* ── Serviços Externos ── */}
+      <div>
+        <h2 className="mb-1 text-lg font-semibold text-gray-900">Serviços Externos</h2>
+        <p className="mb-4 text-sm text-gray-500">Integrações com APIs de terceiros disponíveis na plataforma.</p>
+        <div className="flex justify-center">
+          <button
+            type="button"
+            className="w-full max-w-sm rounded-xl text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+            onClick={() => navigate({ to: '/cep' })}
+          >
+            <Card className="cursor-pointer transition-shadow hover:shadow-md">
+              <CardContent className="flex flex-col items-center gap-4 py-8 text-center">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-100">
+                  <MapPin className="h-7 w-7 text-sky-600" />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-gray-900">Consulta de CEP</h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Busque endereços completos pelo CEP via ViaCEP.
+                  </p>
+                </div>
+                <span className="inline-flex items-center rounded-full bg-sky-50 px-3 py-1 text-xs font-medium text-sky-700 ring-1 ring-inset ring-sky-200">
+                  ViaCEP · API Gratuita
+                </span>
+              </CardContent>
+            </Card>
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

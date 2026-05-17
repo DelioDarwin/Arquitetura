@@ -27,6 +27,7 @@
    - 4.7 [HttpClient Tipado — Comunicação entre Serviços](#47-httpclient-tipado--comunicação-entre-serviços)
    - 4.8 [Health Checks](#48-health-checks)
    - 4.9 [Middleware de Tratamento de Exceções](#49-middleware-de-tratamento-de-exceções)
+   - 4.10 [ViaCEP — Integração com API Pública de CEP](#410-viacep--integração-com-api-pública-de-cep)
 5. [Frontend — Tecnologias e Componentes](#5-frontend--tecnologias-e-componentes)
    - 5.1 [React 19 com Vite 8](#51-react-19-com-vite-8)
    - 5.2 [TypeScript 5](#52-typescript-5)
@@ -62,8 +63,8 @@ Esta solução é um **template de referência** que demonstra como construir um sis
 | Serviço | Responsabilidade | Porta |
 |---------|-----------------|-------|
 | **Produtos API** | Gerenciamento do catálogo de produtos e controle de estoque | `5001` |
-| **Pedidos API** | Criação e consulta de pedidos, orquestração do fluxo de compra | `5002` |
-| **React Client** | Interface web que consome ambas as APIs | `5173` |
+| **Pedidos API** | Criação e consulta de pedidos, orquestração do fluxo de compra e consulta de CEP | `5002` |
+| **React Client** | Interface web que consome ambas as APIs e expõe consulta de CEP | `5173` |
 | **RabbitMQ** | Broker de mensagens para comunicação assíncrona | `15672` (UI) |
 
 **Diagrama de alto nível:**
@@ -627,6 +628,48 @@ public async Task InvokeAsync(HttpContext context)
 }
 ```
 
+### 4.10 ViaCEP — Integração com API Pública de CEP
+
+A Pedidos API expõe um endpoint de consulta de CEP que internamente consome a API pública [ViaCEP](https://viacep.com.br). Essa funcionalidade segue o mesmo padrão arquitetural do restante do serviço: interface na Application, implementação na Infrastructure, CQRS via MediatR e Result Pattern.
+
+**Interface (Pedidos.Application):**
+```csharp
+public interface IViaCepClient
+{
+    Task<ViaCepDto?> ConsultarCepAsync(string cep, CancellationToken ct = default);
+}
+```
+
+**Implementação (Pedidos.Infrastructure):**
+```csharp
+internal sealed class ViaCepClient(HttpClient httpClient) : IViaCepClient
+{
+    public async Task<ViaCepDto?> ConsultarCepAsync(string cep, CancellationToken ct = default)
+    {
+        var response = await httpClient.GetAsync($"ws/{cep}/json/", ct);
+        if (!response.IsSuccessStatusCode) return null;
+
+        var data = await response.Content.ReadFromJsonAsync<ViaCepResponse>(ct);
+        return data?.Erro == true ? null : data?.ToDto();
+    }
+}
+// Registro: services.AddHttpClient<IViaCepClient, ViaCepClient>(c =>
+//     c.BaseAddress = new Uri("https://viacep.com.br/"));
+```
+
+**Endpoint (Pedidos.Api):**
+```csharp
+// GET /api/cep/{cep}
+group.MapGet("/{cep}", async (string cep, ISender sender, CancellationToken ct) =>
+{
+    var result = await sender.Send(new ConsultarCepQuery(cep), ct);
+    return result.IsSuccess ? Results.Ok(result.Value) : Results.NotFound();
+})
+.WithName("ConsultarCep");
+```
+
+**Decisão de design:** A consulta de CEP vive no serviço Pedidos porque é diretamente relevante ao preenchimento do endereço de entrega. Evita criar um microserviço dedicado para esse proxy simples.
+
 ---
 
 ## 5. Frontend — Tecnologias e Componentes
@@ -669,9 +712,23 @@ export interface Pedido {
   itens?: ItemPedidoDetalhe[];
   criadoEm: string;
 }
+
+// src/types/cep.ts
+export interface ViaCep {
+  cep: string;
+  logradouro: string;
+  complemento: string;
+  bairro: string;
+  localidade: string;
+  uf: string;
+  ibge: string;
+  gia: string;
+  ddd: string;
+  siafi: string;
+}
 ```
 
-**Alias de path** (`@/`) configurado em `tsconfig.app.json` e `vite.config.ts`:
+**Alias de path**
 ```typescript
 // Importação limpa sem caminhos relativos ../../
 import { Button } from '@/components/ui/Button';
@@ -700,7 +757,7 @@ const editarProdutoRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   indexRoute, produtosRoute, novoProdutoRoute, editarProdutoRoute,
-  pedidosRoute, novoPedidoRoute,
+  pedidosRoute, novoPedidoRoute, cepRoute,
 ]);
 
 export const router = createRouter({ routeTree });
@@ -839,7 +896,7 @@ export function cn(...inputs: ClassValue[]) {
 **Axios** é o cliente HTTP para as chamadas à API. Durante o desenvolvimento, o **Proxy do Vite** redireciona requisições para as APIs backend, evitando erros de CORS.
 
 ```typescript
-// src/lib/http.ts — duas instâncias isoladas com baseURL distintas
+// src/lib/http.ts — três instâncias isoladas com baseURL distintas
 export const produtosApi = axios.create({
   baseURL: '/api/produtos',
   headers: { 'Content-Type': 'application/json' },
@@ -847,6 +904,11 @@ export const produtosApi = axios.create({
 
 export const pedidosApi = axios.create({
   baseURL: '/api/pedidos',
+  headers: { 'Content-Type': 'application/json' },
+});
+
+export const cepApi = axios.create({
+  baseURL: '/api/cep',
   headers: { 'Content-Type': 'application/json' },
 });
 ```
@@ -857,9 +919,12 @@ server: {
   proxy: {
     '/api/produtos': { target: 'http://localhost:5001', changeOrigin: true },
     '/api/pedidos':  { target: 'http://localhost:5002', changeOrigin: true },
+    '/api/cep':      { target: 'http://localhost:5002', changeOrigin: true },
   }
 }
 ```
+
+> **Nota:** `/api/cep` é roteado para a **Pedidos API** (porta 5002), que internamente consulta `https://viacep.com.br` e retorna os dados de endereço. O frontend nunca acessa o ViaCEP diretamente.
 
 **Como funciona o proxy:**
 ```
@@ -876,20 +941,32 @@ Browser                   Vite Dev Server           Backend
 O frontend segue uma arquitetura em camadas:
 
 ```
-pages/           ? Composição de funcionalidades completas (telas)
-  ?  usa
-hooks/           ? Estado de servidor (TanStack Query) e lógica de negócio UI
-  ?  usa
-services/        ? Chamadas HTTP puras (funções async que chamam Axios)
-  ?  usa
-lib/http.ts      ? Instâncias Axios configuradas
+pages/           -> Composição de funcionalidades completas (telas)
+  |  usa
+hooks/           -> Estado de servidor (TanStack Query) e lógica de negócio UI
+  |  usa
+services/        -> Chamadas HTTP puras (funções async que chamam Axios)
+  |  usa
+lib/http.ts      -> produtosApi | pedidosApi | cepApi
 
-components/ui/   ? Componentes reutilizáveis sem lógica de negócio
+components/ui/   -> Componentes reutilizáveis sem lógica de negócio
   Button, Input, Card, Badge, Spinner, EmptyState
 
-components/layout/ ? Shell da aplicação
+components/layout/ -> Shell da aplicação
   RootLayout, Navbar
 ```
+
+**Páginas implementadas:**
+
+| Página | Rota | Responsabilidade |
+|--------|------|------------------|
+| `DashboardPage` | `/` | Visão geral com cards de resumo |
+| `ProdutosPage` | `/produtos` | Listagem com filtro e ações |
+| `NovoProdutoPage` | `/produtos/novo` | Formulário de criação |
+| `EditarProdutoPage` | `/produtos/$id/editar` | Formulário de edição |
+| `PedidosPage` | `/pedidos` | Listagem de pedidos por cliente |
+| `NovoPedidoPage` | `/pedidos/novo` | Formulário de criação de pedido |
+| `ConsultaCepPage` | `/cep` | Consulta de endereço por CEP via ViaCEP |
 
 **Componentes UI criados:**
 
@@ -1047,6 +1124,29 @@ Client            ?                ?               ?          (Consumer)
 
 **Ponto-chave:** O cliente recebe a resposta `201 Created` imediatamente após a persistência do pedido. O débito de estoque acontece de forma assíncrona, desacoplando a latência do pedido do processamento do estoque.
 
+### 7.3 Fluxo: Consultar CEP
+
+```
+React Client          Pedidos API (5002)         ViaCEP (externo)
+     |                      |                          |
+     +--GET /api/cep/01310100+                          |
+     |                      +--ConsultarCepQuery--------+
+     |                      |  (MediatR)                |
+     |                      +--GET ws/01310100/json/---->|
+     |                      |<--{ logradouro, bairro... }|
+     |                      |                          |
+     |    Result.Success     |                          |
+     |<--200 OK (ViaCepDto)--+                          |
+     |                      |                          |
+     |  (CEP inexistente)    |                          |
+     +--GET /api/cep/00000000+                          |
+     |                      +--GET ws/00000000/json/---->|
+     |                      |<--{ "erro": true }---------|
+     |<--404 Not Found-------+                          |
+```
+
+**Ponto-chave:** O frontend nunca acessa `viacep.com.br` diretamente. A Pedidos API atua como proxy, centralizando o tratamento de erros (CEP inválido, timeout) e mantendo o frontend desacoplado de APIs externas.
+
 ---
 
 ## 8. Como Executar a Solução
@@ -1134,6 +1234,7 @@ O cliente já está configurado com proxy para as APIs. Certifique-se de que as AP
 |--------|------|-----------|------|
 | `GET` | `/api/pedidos/cliente/{clienteId}` | Lista pedidos por cliente | — |
 | `POST` | `/api/pedidos` | Cria e confirma pedido | `{ clienteId, itens: [{ produtoId, quantidade }] }` |
+| `GET` | `/api/cep/{cep}` | Consulta endereço por CEP (via ViaCEP) | — |
 | `GET` | `/health` | Health check | — |
 
 **Exemplo de payload para criar pedido:**
@@ -1143,6 +1244,22 @@ O cliente já está configurado com proxy para as APIs. Certifique-se de que as AP
   "itens": [
     { "produtoId": "ee74c967-144a-4879-8dcb-82608f3e71f2", "quantidade": 2 }
   ]
+}
+```
+
+**Exemplo de resposta para consultar CEP (`GET /api/cep/01310100`):**
+```json
+{
+  "cep": "01310-100",
+  "logradouro": "Avenida Paulista",
+  "complemento": "de 1 a 610 - lado par",
+  "bairro": "Bela Vista",
+  "localidade": "São Paulo",
+  "uf": "SP",
+  "ibge": "3550308",
+  "gia": "1004",
+  "ddd": "11",
+  "siafi": "7107"
 }
 ```
 
@@ -1182,6 +1299,8 @@ O Vite usa o proxy configurado em `vite.config.ts`. Não há variáveis de ambiente
 | **Minimal APIs em vez de Controllers** | Menos código de cerimônia, mais performance | Menor familiaridade para desenvolvedores acostumados ao MVC |
 | **TanStack Router em vez de React Router** | Type-safety completo nas rotas | API mais verbosa para definição manual |
 | **Result Pattern em vez de Exceptions** | Fluxos de negócio esperados não são exceções | Necessário propagar `Result` por toda a cadeia de chamadas |
+| **CEP no serviço Pedidos** | CEP é diretamente relevante ao endereço de entrega de um pedido | Acoplamento leve de responsabilidade; seria um microserviço excessivo separado |
+| **Frontend como proxy para ViaCEP** | Centraliza tratamento de erros e evita CORS no browser | Adiciona latência extra de um hop; mitigado por `staleTime` longo no TanStack Query |
 
 ---
 
@@ -1216,6 +1335,7 @@ O Vite usa o proxy configurado em `vite.config.ts`. Não há variáveis de ambiente
 | **Ubiquitous Language** | Linguagem comum entre desenvolvedores e especialistas de domínio, refletida no código |
 | **Unit of Work** | Padrão que agrupa operações de banco em uma única transação |
 | **Value Object** | Objeto do domínio sem identidade própria, definido apenas por seus atributos |
+| **ViaCEP** | API pública brasileira que retorna dados de endereço a partir de um CEP |
 
 ---
 

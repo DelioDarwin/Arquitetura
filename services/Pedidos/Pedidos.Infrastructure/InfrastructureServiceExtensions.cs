@@ -27,6 +27,10 @@ public static class InfrastructureServiceExtensions
             client.BaseAddress = new Uri(configuration["Services:ProdutosUrl"]
                 ?? throw new InvalidOperationException("Services:ProdutosUrl não configurado.")));
 
+        // Cliente HTTP para a API externa ViaCEP
+        services.AddHttpClient<IViaCepClient, ViaCepClient>(client =>
+            client.BaseAddress = new Uri("https://viacep.com.br/"));
+
         // Publisher de Integration Events via MassTransit / RabbitMQ
         services.AddScoped<IEventPublisher, MassTransitEventPublisher>();
 

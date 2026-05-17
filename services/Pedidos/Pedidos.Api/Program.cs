@@ -21,6 +21,7 @@ app.MapOpenApi();
 app.MapScalarApiReference(opt => opt.WithTitle("Pedidos API"));
 
 app.MapPedidosEndpoints();
+app.MapCepEndpoints();
 app.MapHealthChecks("/health");
 
 app.Run();

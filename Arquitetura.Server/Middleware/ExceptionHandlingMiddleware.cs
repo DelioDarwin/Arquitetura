@@ -1,4 +1,3 @@
-using Arquitetura.Domain.Exceptions;
 using FluentValidation;
 using System.Net;
 using System.Text.Json;
@@ -23,11 +22,6 @@ internal sealed class ExceptionHandlingMiddleware(
             logger.LogWarning("Erro de validação: {Errors}", ex.Errors);
             await WriteResponseAsync(context, HttpStatusCode.UnprocessableEntity, "Erro de Validação",
                 ex.Errors.Select(e => e.ErrorMessage));
-        }
-        catch (DomainException ex)
-        {
-            logger.LogWarning("Regra de negócio violada: {Message}", ex.Message);
-            await WriteResponseAsync(context, HttpStatusCode.BadRequest, "Regra de Negócio", [ex.Message]);
         }
         catch (Exception ex)
         {

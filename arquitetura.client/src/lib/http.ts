@@ -11,6 +11,11 @@ export const pedidosApi = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+export const cepApi = axios.create({
+  baseURL: '/api/cep',
+  headers: { 'Content-Type': 'application/json' },
+});
+
 export function extractApiError(error: unknown): ApiError {
   if (axios.isAxiosError(error) && error.response?.data) {
     return error.response.data as ApiError;
