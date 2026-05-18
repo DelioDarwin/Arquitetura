@@ -1,16 +1,16 @@
 <Solution>
-  <Project Path="arquitetura.client/arquitetura.client.esproj">
+  <Project Path="Arquitetura.Backend/Pedidos/Pedidos.Api/Pedidos.Api.csproj" />
+  <Project Path="Arquitetura.Backend/Pedidos/Pedidos.Application/Pedidos.Application.csproj" />
+  <Project Path="Arquitetura.Backend/Pedidos/Pedidos.Domain/Pedidos.Domain.csproj" />
+  <Project Path="Arquitetura.Backend/Pedidos/Pedidos.Infrastructure/Pedidos.Infrastructure.csproj" />
+  <Project Path="Arquitetura.Backend/Produtos/Produtos.Api/Produtos.Api.csproj" />
+  <Project Path="Arquitetura.Backend/Produtos/Produtos.Application/Produtos.Application.csproj" />
+  <Project Path="Arquitetura.Backend/Produtos/Produtos.Domain/Produtos.Domain.csproj" />
+  <Project Path="Arquitetura.Backend/Produtos/Produtos.Infrastructure/Produtos.Infrastructure.csproj" />
+  <Project Path="Arquitetura.Frontend/Arquitetura.Frontend.esproj">
     <Build />
     <Deploy />
   </Project>
-  <Project Path="Arquitetura.Server/Arquitetura.Server.csproj" />
-  <Project Path="services/Pedidos/Pedidos.Api/Pedidos.Api.csproj" />
-  <Project Path="services/Pedidos/Pedidos.Application/Pedidos.Application.csproj" />
-  <Project Path="services/Pedidos/Pedidos.Domain/Pedidos.Domain.csproj" />
-  <Project Path="services/Pedidos/Pedidos.Infrastructure/Pedidos.Infrastructure.csproj" />
-  <Project Path="services/Produtos/Produtos.Api/Produtos.Api.csproj" />
-  <Project Path="services/Produtos/Produtos.Application/Produtos.Application.csproj" />
-  <Project Path="services/Produtos/Produtos.Domain/Produtos.Domain.csproj" />
-  <Project Path="services/Produtos/Produtos.Infrastructure/Produtos.Infrastructure.csproj" />
-  <Project Path="shared/Arquitetura.SharedKernel/Arquitetura.SharedKernel.csproj" />
+  <Project Path="Arquitetura.Shared/Arquitetura.SharedKernel/Arquitetura.SharedKernel.csproj" />
 </Solution>
+

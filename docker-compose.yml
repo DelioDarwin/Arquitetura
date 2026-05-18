@@ -65,7 +65,7 @@ services:
   produtos-api:
     build:
       context: .
-      dockerfile: services/Produtos/Produtos.Api/Dockerfile
+      dockerfile: Arquitetura.Backend/Produtos/Produtos.Api/Dockerfile
     image: arquitetura/produtos-api:latest
     container_name: produtos-api
     ports:
@@ -94,7 +94,7 @@ services:
   pedidos-api:
     build:
       context: .
-      dockerfile: services/Pedidos/Pedidos.Api/Dockerfile
+      dockerfile: Arquitetura.Backend/Pedidos/Pedidos.Api/Dockerfile
     image: arquitetura/pedidos-api:latest
     container_name: pedidos-api
     ports:
@@ -122,6 +122,23 @@ services:
       timeout: 5s
       retries: 3
       start_period: 15s
+
+  frontend:
+    build:
+      context: Arquitetura.Frontend
+      dockerfile: Dockerfile
+    image: arquitetura/frontend:latest
+    container_name: frontend
+    ports:
+      - "80:80"
+    networks:
+      - arquitetura-net
+    restart: unless-stopped
+    depends_on:
+      produtos-api:
+        condition: service_healthy
+      pedidos-api:
+        condition: service_healthy
 
 networks:
   arquitetura-net:
