@@ -69,7 +69,7 @@ export function EditarClientePage() {
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <Input
-              id="nome"
+              id="nome"  
               label="Nome *"
               placeholder="Ex: João da Silva"
               error={errors.nome?.message}

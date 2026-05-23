@@ -1,8 +1,8 @@
 ﻿# Documentação do Frontend — Arquitetura.Frontend
 
 > Guia de estudo detalhado que explica cada camada da interface, do clique do usuário
-> até a chamada HTTP à API e o retorno dos dados na tela. Cobre os dois CRUDs da
-> aplicação — **Produtos** e **Pedidos** — a consulta de **CEP** e destaca os
+> até a chamada HTTP à API e o retorno dos dados na tela. Cobre os CRUDs de
+> **Produtos**, **Pedidos** e **Clientes**, a consulta de **CEP** e destaca os
 > componentes e padrões compartilhados entre eles.
 
 ---
@@ -17,15 +17,18 @@
    - 5.1 [Tipos de Produto](#51-tipos-de-produto)
    - 5.2 [Tipos de Pedido](#52-tipos-de-pedido)
    - 5.3 [Tipos de CEP](#53-tipos-de-cep)
+   - 5.4 [Tipos de Cliente](#54-tipos-de-cliente)
 6. [Camada HTTP — lib/http.ts](#6-camada-http--libhttpts)
 7. [Camadas de Serviço](#7-camadas-de-serviço)
    - 7.1 [produtosService.ts](#71-produtosservicets)
    - 7.2 [pedidosService.ts](#72-pedidosservicets)
    - 7.3 [cepService.ts](#73-cepservicets)
+   - 7.4 [clientesService.ts](#74-clientesservicets)
 8. [Camadas de Hooks](#8-camadas-de-hooks)
    - 8.1 [useProdutos.ts](#81-useprodutosts)
    - 8.2 [usePedidos.ts](#82-usepedidosts)
    - 8.3 [useCep.ts](#83-usecepts)
+   - 8.4 [useClientes.ts](#84-useclientests)
 9. [Componentes UI Compartilhados](#9-componentes-ui-compartilhados)
    - 9.1 [Button](#91-button)
    - 9.2 [Input](#92-input)
@@ -43,13 +46,20 @@
     - 11.1 [Listar Pedidos — PedidosPage.tsx](#111-listar-pedidos--pedidospagetsx)
     - 11.2 [Criar Pedido — NovoPedidoPage.tsx](#112-criar-pedido--novopedidopagetsx)
 12. [Consulta de CEP — ConsultaCepPage.tsx](#12-consulta-de-cep--consultaceppagetsx)
-13. [Dashboard — DashboardPage.tsx](#13-dashboard--dashboardpagetsx)
-14. [Fluxo Completo de Dados — Do Clique à API](#14-fluxo-completo-de-dados--do-clique-à-api)
-    - 14.1 [Criar Produto](#141-criar-produto)
-    - 14.2 [Criar Pedido](#142-criar-pedido)
-    - 14.3 [Consultar CEP](#143-consultar-cep)
-15. [Utilitários — lib/utils.ts](#15-utilitários--libutilsts)
-16. [Diagrama de Dependências entre Camadas](#16-diagrama-de-dependências-entre-camadas)
+13. [CRUD de Clientes — Página a Página](#13-crud-de-clientes--página-a-página)
+    - 13.1 [Listar Clientes — ClientesPage.tsx](#131-listar-clientes--clientespagetsx)
+    - 13.2 [Criar Cliente — NovoClientePage.tsx](#132-criar-cliente--novoclientepagetsx)
+    - 13.3 [Editar Cliente — EditarClientePage.tsx](#133-editar-cliente--editarclientepagetsx)
+    - 13.4 [Excluir Cliente — Fluxo inline na Lista](#134-excluir-cliente--fluxo-inline-na-lista)
+14. [Dashboard — DashboardPage.tsx](#14-dashboard--dashboardpagetsx)
+15. [Fluxo Completo de Dados — Do Clique à API](#15-fluxo-completo-de-dados--do-clique-à-api)
+    - 15.1 [Criar Produto](#151-criar-produto)
+    - 15.2 [Criar Pedido](#152-criar-pedido)
+    - 15.3 [Consultar CEP](#153-consultar-cep)
+    - 15.4 [Criar Cliente](#154-criar-cliente)
+16. [Utilitários — lib/utils.ts](#16-utilitários--libutilsts)
+17. [Diagrama de Dependências entre Camadas](#17-diagrama-de-dependências-entre-camadas)
+17. [Diagrama de Dependências entre Camadas](#17-diagrama-de-dependências-entre-camadas)
 
 ---
 
@@ -143,24 +153,28 @@ src/router.ts
 ```
 
 O TanStack Router usa uma árvore de rotas construída manualmente em código. A aplicação
-possui **7 rotas** registradas:
+possui **10 rotas** registradas:
 
 ```typescript
 // src/router.ts
 
 const rootRoute = createRootRoute({ component: RootLayout });
 
-const indexRoute        = createRoute({ getParentRoute: () => rootRoute, path: '/',                        component: DashboardPage });
-const produtosRoute     = createRoute({ getParentRoute: () => rootRoute, path: '/produtos',                component: ProdutosPage });
-const novoProdutoRoute  = createRoute({ getParentRoute: () => rootRoute, path: '/produtos/novo',           component: NovoProdutoPage });
-const editarProdutoRoute= createRoute({ getParentRoute: () => rootRoute, path: '/produtos/$id/editar',     component: EditarProdutoPage });
-const pedidosRoute      = createRoute({ getParentRoute: () => rootRoute, path: '/pedidos',                 component: PedidosPage });
-const novoPedidoRoute   = createRoute({ getParentRoute: () => rootRoute, path: '/pedidos/novo',            component: NovoPedidoPage });
-const cepRoute          = createRoute({ getParentRoute: () => rootRoute, path: '/cep',                     component: ConsultaCepPage });
+const indexRoute         = createRoute({ getParentRoute: () => rootRoute, path: '/',                         component: DashboardPage });
+const produtosRoute      = createRoute({ getParentRoute: () => rootRoute, path: '/produtos',                 component: ProdutosPage });
+const novoProdutoRoute   = createRoute({ getParentRoute: () => rootRoute, path: '/produtos/novo',            component: NovoProdutoPage });
+const editarProdutoRoute = createRoute({ getParentRoute: () => rootRoute, path: '/produtos/$id/editar',      component: EditarProdutoPage });
+const pedidosRoute       = createRoute({ getParentRoute: () => rootRoute, path: '/pedidos',                  component: PedidosPage });
+const novoPedidoRoute    = createRoute({ getParentRoute: () => rootRoute, path: '/pedidos/novo',             component: NovoPedidoPage });
+const cepRoute           = createRoute({ getParentRoute: () => rootRoute, path: '/cep',                      component: ConsultaCepPage });
+const clientesRoute      = createRoute({ getParentRoute: () => rootRoute, path: '/clientes',                 component: ClientesPage });
+const novoClienteRoute   = createRoute({ getParentRoute: () => rootRoute, path: '/clientes/novo',            component: NovoClientePage });
+const editarClienteRoute = createRoute({ getParentRoute: () => rootRoute, path: '/clientes/$id/editar',      component: EditarClientePage });
 
 const routeTree = rootRoute.addChildren([
   indexRoute, produtosRoute, novoProdutoRoute, editarProdutoRoute,
   pedidosRoute, novoPedidoRoute, cepRoute,
+  clientesRoute, novoClienteRoute, editarClienteRoute,
 ]);
 
 export const router = createRouter({ routeTree });
@@ -181,6 +195,9 @@ declare module '@tanstack/react-router' {
 | `/pedidos` | `PedidosPage` | Busca por cliente + listagem |
 | `/pedidos/novo` | `NovoPedidoPage` | Formulário de criação com itens |
 | `/cep` | `ConsultaCepPage` | Consulta de endereço por CEP |
+| `/clientes` | `ClientesPage` | Listagem + editar/excluir inline |
+| `/clientes/novo` | `NovoClientePage` | Formulário de criação |
+| `/clientes/$id/editar` | `EditarClientePage` | Formulário de edição |
 
 ### Navegação programática
 
@@ -227,14 +244,15 @@ export function RootLayout() {
 
 ### Navbar
 
-A Navbar possui **quatro itens** de navegação, incluindo a rota de CEP:
+A Navbar possui **cinco itens** de navegação, incluindo Clientes:
 
 ```tsx
 const navItems = [
-  { to: '/',        label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/',         label: 'Dashboard', icon: LayoutDashboard },
   { to: '/produtos', label: 'Produtos',  icon: Package },
   { to: '/pedidos',  label: 'Pedidos',   icon: ShoppingCart },
   { to: '/cep',      label: 'CEP',       icon: MapPin },
+  { to: '/clientes', label: 'Clientes',  icon: UserRound },
 ];
 
 export function Navbar() {
@@ -385,6 +403,49 @@ passa pela API de Pedidos.
 
 ---
 
+### 5.4 Tipos de Cliente
+
+```typescript
+// src/types/cliente.ts
+
+export interface Cliente {
+  clienteId: string;    // Guid do backend → string no TypeScript
+  nome: string;
+  email: string;
+  cpf: string;          // somente dígitos, 11 chars (formatação é responsabilidade do frontend)
+  criadoEm: string;     // DateTime → string ISO 8601
+  atualizadoEm?: string;
+}
+
+export interface CriarClienteRequest {
+  nome: string;
+  email: string;
+  cpf: string;
+}
+
+export interface AtualizarClienteRequest {
+  nome: string;
+  email: string;
+  cpf: string;
+}
+
+export interface ClienteCriado {
+  clienteId: string;  // apenas o id — sem o objeto completo
+}
+```
+
+**Nota sobre CPF:** o campo `cpf` é exibido com máscara na interface (`787.548.016-72`),
+mas o serviço remove todos os não-dígitos antes de enviar ao backend — `"78754801672"`.
+Isso ocorre porque o backend valida exatamente 11 caracteres numéricos. Veja a seção
+[7.4 clientesService.ts](#74-clientesservicets) para a implementação da normalização.
+
+**Por que `clienteId` e não `id`?**
+A API de Clientes retorna o campo com a chave `clienteId` (padrão adotado no DTO de
+resposta desse serviço). Os outros serviços usam `id` genérico — cada domínio pode ter
+sua convenção de serialização.
+
+---
+
 ## 6. Camada HTTP — lib/http.ts
 
 ```
@@ -412,6 +473,12 @@ export const pedidosApi = axios.create({
 // Instância dedicada para consulta de CEP (roteada pela Pedidos API)
 export const cepApi = axios.create({
   baseURL: '/api/cep',
+  headers: { 'Content-Type': 'application/json' },
+});
+
+// Instância dedicada para o serviço de Clientes
+export const clientesApi = axios.create({
+  baseURL: '/api/clientes',
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -452,12 +519,14 @@ server: {
     '/api/produtos': { target: 'http://localhost:5001', changeOrigin: true },
     '/api/pedidos':  { target: 'http://localhost:5002', changeOrigin: true },
     '/api/cep':      { target: 'http://localhost:5002', changeOrigin: true },
+    '/api/clientes': { target: 'http://localhost:5003', changeOrigin: true },
   }
 }
 ```
 
 **Detalhe importante:** `/api/cep` é roteado para a **Pedidos API** (porta 5002),
 pois é o serviço de Pedidos que integra com o ViaCEP e expõe o endpoint de CEP.
+`/api/clientes` é roteado para a **Clientes API** (porta 5003), serviço independente.
 
 ---
 
@@ -546,6 +615,59 @@ export const cepService = {
 | `consultar(cep)` | `GET /api/cep/{cep}` | `GET :5002/api/cep/{cep}` |
 
 O `cepService` é a camada mais simples do projeto — uma única operação de leitura. Toda a complexidade de integração com o ViaCEP fica encapsulada no backend (Pedidos API).
+
+---
+
+### 7.4 clientesService.ts
+
+```typescript
+// src/services/clientesService.ts
+
+export const clientesService = {
+  async listar(): Promise<Cliente[]> {
+    const { data } = await clientesApi.get<Cliente[]>('/');
+    return data;
+  },
+
+  async obterPorId(clienteId: string): Promise<Cliente> {
+    const { data } = await clientesApi.get<Cliente>(`/${clienteId}`);
+    return data;
+  },
+
+  async criar(payload: CriarClienteRequest): Promise<ClienteCriado> {
+    const { data } = await clientesApi.post('/', {
+      ...payload,
+      cpf: payload.cpf.replace(/\D/g, ''),  // remove máscara antes de enviar
+    });
+    return data;
+  },
+
+  async atualizar(clienteId: string, payload: AtualizarClienteRequest): Promise<void> {
+    await clientesApi.put(`/${clienteId}`, {
+      ...payload,
+      cpf: payload.cpf.replace(/\D/g, ''),  // remove máscara antes de enviar
+    });
+  },
+
+  async excluir(clienteId: string): Promise<void> {
+    await clientesApi.delete(`/${clienteId}`);
+  },
+};
+```
+
+| Método | URL enviada ao Vite | URL que chega na API |
+|--------|--------------------|--------------------|
+| `listar()` | `GET /api/clientes/` | `GET :5003/api/clientes/` |
+| `obterPorId(id)` | `GET /api/clientes/{id}` | `GET :5003/api/clientes/{id}` |
+| `criar(payload)` | `POST /api/clientes/` | `POST :5003/api/clientes/` |
+| `atualizar(id, payload)` | `PUT /api/clientes/{id}` | `PUT :5003/api/clientes/{id}` |
+| `excluir(id)` | `DELETE /api/clientes/{id}` | `DELETE :5003/api/clientes/{id}` |
+
+**Normalização do CPF:**
+O campo CPF pode chegar com máscara (`787.548.016-72`) se o input da tela aplicar
+formatação visual. O serviço remove todos os caracteres não-numéricos com
+`.replace(/\D/g, '')` antes de serializar o payload, garantindo que o backend sempre
+receba exatamente 11 dígitos — conforme exigido pelo `CriarClienteCommandValidator`.
 
 ---
 
@@ -698,6 +820,70 @@ ser exibido imediatamente para o usuário corrigir a entrada.
 
 ---
 
+### 8.4 useClientes.ts
+
+```typescript
+// src/hooks/useClientes.ts
+
+export const clientesKeys = {
+  all: ['clientes'] as const,
+  detail: (id: string) => ['clientes', id] as const,
+};
+
+export function useClientes() {
+  return useQuery({ queryKey: clientesKeys.all, queryFn: clientesService.listar });
+}
+
+export function useCliente(id: string) {
+  return useQuery({
+    queryKey: clientesKeys.detail(id),
+    queryFn: () => clientesService.obterPorId(id),
+    enabled: !!id,
+  });
+}
+
+export function useCriarCliente() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: CriarClienteRequest) => clientesService.criar(payload),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: clientesKeys.all }),
+  });
+}
+
+export function useAtualizarCliente() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...payload }: AtualizarClienteRequest & { id: string }) =>
+      clientesService.atualizar(id, payload),
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: clientesKeys.all });
+      queryClient.invalidateQueries({ queryKey: clientesKeys.detail(vars.id) });
+    },
+  });
+}
+
+export function useExcluirCliente() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => clientesService.excluir(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: clientesKeys.all }),
+  });
+}
+```
+
+**Chaves de cache de Clientes:**
+
+| Chave | Quando invalida |
+|-------|----------------|
+| `['clientes']` | Criar, Excluir — qualquer operação que altere a lista |
+| `['clientes', id]` | Atualizar — invalida também o detalhe do cliente editado |
+
+O hook `useAtualizarCliente` invalida **duas chaves**: a lista geral e o detalhe
+individual. Isso garante que tanto a `ClientesPage` (lista) quanto a `EditarClientePage`
+(detalhe carregado para preencher o formulário) recebam dados atualizados após uma edição.
+
+---
+
 ## 9. Componentes UI Compartilhados
 
 ```
@@ -811,6 +997,7 @@ export function Badge({ variant = 'default', children, className }: BadgeProps) 
 **Onde é usado:**
 - `ProdutosPage` — estoque disponível (`success`) ou esgotado (`destructive`)
 - `PedidosPage` — status do pedido: Pendente (`warning`), Confirmado (`success`), Cancelado (`destructive`)
+- `ClientesPage` — não usa Badge (exibe dados textuais diretamente nos cards)
 
 ### 9.5 EmptyState
 
@@ -825,6 +1012,7 @@ interface EmptyStateProps {
 **Onde é usado:**
 - `ProdutosPage` — quando não há produtos cadastrados
 - `PedidosPage` — quando nenhum `clienteId` foi informado e quando a busca não retorna pedidos
+- `ClientesPage` — quando não há clientes cadastrados
 
 ### 9.6 Spinner e PageSpinner
 
@@ -843,7 +1031,7 @@ export function PageSpinner() {
 ```
 
 **Onde é usado:**
-- `PageSpinner` — retornado diretamente em `ProdutosPage`, `EditarProdutoPage`, `DashboardPage` e `PedidosPage` durante `isLoading = true`
+- `PageSpinner` — retornado diretamente em `ProdutosPage`, `EditarProdutoPage`, `DashboardPage`, `PedidosPage`, `EditarClientePage` e `ClientesPage` durante `isLoading = true`
 - `Spinner` embutido no `Button` — exibido automaticamente quando `loading={true}`
 - `ConsultaCepPage` — exibido dentro do card de resultado enquanto `isFetching = true`
 
@@ -1313,7 +1501,206 @@ useCep → cache ['cep', '01310100'] → ConsultaCepPage re-renderiza
 
 ---
 
-## 13. Dashboard — DashboardPage.tsx
+## 13. CRUD de Clientes — Página a Página
+
+### 13.1 Listar Clientes — ClientesPage.tsx
+
+```
+src/pages/cliente/ClientesPage.tsx
+```
+
+**O que faz:** Busca todos os clientes da API, renderiza cards com nome, e-mail, CPF
+formatado e ações de editar/excluir. Exibe confirmação de dois cliques antes de excluir.
+
+```tsx
+export function ClientesPage() {
+  const navigate = useNavigate();
+  const { data: clientes, isLoading, isError } = useClientes();
+  const excluir = useExcluirCliente();
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+
+  if (isLoading) return <PageSpinner />;
+  if (isError)   return <p>Erro ao carregar clientes.</p>;
+
+  return (
+    <div>
+      <div className="flex justify-between">
+        <h1>Clientes</h1>
+        <Button onClick={() => navigate({ to: '/clientes/novo' })}>Novo Cliente</Button>
+      </div>
+
+      {!clientes?.length ? (
+        <EmptyState title="Nenhum cliente cadastrado"
+                    description="Comece adicionando o primeiro cliente."
+                    action={<Button onClick={() => navigate({ to: '/clientes/novo' })}>Novo Cliente</Button>} />
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {clientes.map((cliente) => (
+            <Card key={cliente.clienteId}>
+              <CardHeader>
+                <CardTitle>{cliente.nome}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p>{cliente.email}</p>
+                <p>{formatCpf(cliente.cpf)}</p>   {/* exibe com máscara */}
+                <p>{formatDate(cliente.criadoEm)}</p>
+
+                <Button onClick={() => navigate({
+                  to: '/clientes/$id/editar', params: { id: cliente.clienteId }
+                })}>
+                  Editar
+                </Button>
+
+                {confirmDelete === cliente.clienteId ? (
+                  <Button variant="destructive" loading={excluir.isPending}
+                    onClick={() => excluir.mutate(cliente.clienteId,
+                      { onSuccess: () => setConfirmDelete(null) })}>
+                    Confirmar
+                  </Button>
+                ) : (
+                  <Button variant="ghost" onClick={() => setConfirmDelete(cliente.clienteId)}>
+                    <Trash2 />
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+**Formatação de CPF na exibição:**
+O banco armazena apenas os 11 dígitos (`78754801672`). A página aplica uma função de
+formatação visual ao exibir: `"78754801672"` → `"787.548.016-72"`. Essa transformação
+é feita apenas na camada de apresentação — o dado bruto no cache permanece sem máscara.
+
+---
+
+### 13.2 Criar Cliente — NovoClientePage.tsx
+
+```
+src/pages/cliente/NovoClientePage.tsx
+```
+
+```tsx
+const schema = z.object({
+  nome:  z.string().min(1, 'Nome é obrigatório').max(200),
+  email: z.string().email('E-mail inválido'),
+  cpf:   z.string().min(1, 'CPF é obrigatório'),
+});
+
+export function NovoClientePage() {
+  const navigate = useNavigate();
+  const criar = useCriarCliente();
+  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
+    resolver: zodResolver(schema),
+  });
+
+  const onSubmit = (data: FormData) =>
+    criar.mutate(data, { onSuccess: () => navigate({ to: '/clientes' }) });
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <Input id="nome"  label="Nome *"   error={errors.nome?.message}  {...register('nome')} />
+      <Input id="email" label="E-mail *" error={errors.email?.message} {...register('email')} />
+      <Input id="cpf"   label="CPF *"    error={errors.cpf?.message}   {...register('cpf')}
+             placeholder="000.000.000-00" />
+      <Button type="submit" loading={criar.isPending}>Criar Cliente</Button>
+    </form>
+  );
+}
+```
+
+**Fluxo de validação:**
+```
+Clique em "Criar Cliente"
+  → handleSubmit() → zodResolver.parse(values)
+     ├── FALHA → errors exibidos nos campos
+     └── SUCESSO → onSubmit(data)
+                      → criar.mutate(data)
+                         → clientesService.criar()
+                           → cpf.replace(/\D/g, '') → payload normalizado
+                         → POST /api/clientes/
+                            ├── 201 → invalidate cache → navigate('/clientes')
+                            └── 4xx → isError = true → mensagem exibida
+```
+
+---
+
+### 13.3 Editar Cliente — EditarClientePage.tsx
+
+```
+src/pages/cliente/EditarClientePage.tsx
+```
+
+```tsx
+export function EditarClientePage() {
+  const { id } = useParams({ strict: false }) as { id: string };
+  const navigate = useNavigate();
+  const { data: cliente, isLoading } = useCliente(id);
+  const atualizar = useAtualizarCliente();
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
+    resolver: zodResolver(schema),
+  });
+
+  // Preenche o formulário quando os dados chegarem da API
+  useEffect(() => {
+    if (cliente) reset({ nome: cliente.nome, email: cliente.email, cpf: cliente.cpf });
+  }, [cliente, reset]);
+
+  const onSubmit = (data: FormData) =>
+    atualizar.mutate({ id, ...data }, { onSuccess: () => navigate({ to: '/clientes' }) });
+
+  if (isLoading) return <PageSpinner />;
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <Input id="nome"  label="Nome *"   error={errors.nome?.message}  {...register('nome')} />
+      <Input id="email" label="E-mail *" error={errors.email?.message} {...register('email')} />
+      <Input id="cpf"   label="CPF *"    error={errors.cpf?.message}   {...register('cpf')} />
+      <Button type="submit" loading={atualizar.isPending}>Salvar Alterações</Button>
+    </form>
+  );
+}
+```
+
+**Por que `useEffect` com `reset`?**
+Mesmo padrão da `EditarProdutoPage`: o formulário inicializa vazio, a query busca o
+cliente e, quando os dados chegam, `reset()` preenche todos os campos de uma vez.
+
+---
+
+### 13.4 Excluir Cliente — Fluxo inline na Lista
+
+Exclusão com confirmação em dois cliques na `ClientesPage` — idêntico ao padrão de Produtos:
+
+```tsx
+const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+
+// 1º clique — ativa confirmação
+<Button variant="ghost" onClick={() => setConfirmDelete(cliente.clienteId)}>
+  <Trash2 />
+</Button>
+
+// 2º clique — efetivamente exclui
+{confirmDelete === cliente.clienteId && (
+  <Button variant="destructive" loading={excluir.isPending}
+    onClick={() => excluir.mutate(cliente.clienteId,
+      { onSuccess: () => setConfirmDelete(null) })}>
+    Confirmar
+  </Button>
+)}
+```
+
+O `clienteId` (não `id`) é usado como identificador porque o tipo `Cliente` retornado
+pela API usa esse nome de campo.
+
+---
+
+## 14. Dashboard — DashboardPage.tsx
 
 ```
 src/pages/dashboard/DashboardPage.tsx
@@ -1377,9 +1764,9 @@ frontend transforma os dados já disponíveis com `.filter()`, `.reduce()` e `fo
 
 ---
 
-## 14. Fluxo Completo de Dados — Do Clique à API
+## 15. Fluxo Completo de Dados — Do Clique à API
 
-### 14.1 Criar Produto
+### 15.1 Criar Produto
 
 ```
 Usuário clica "Criar Produto"
@@ -1410,7 +1797,7 @@ handleSubmit() → zodResolver.parse(values)
       ProdutosPage → useProdutos() re-busca → lista atualizada
 ```
 
-### 14.2 Criar Pedido
+### 15.2 Criar Pedido
 
 ```
 Usuário clica "Criar Pedido"
@@ -1436,7 +1823,7 @@ handleSubmit() → zodResolver (clienteId UUID + itens.min(1))
         → invalidateQueries(['pedidos', 'cliente', clienteId])
 ```
 
-### 14.3 Consultar CEP
+### 15.3 Consultar CEP
 
 ```
 Usuário digita "01310-100" → formatCep aplica máscara
@@ -1470,7 +1857,69 @@ useCep → isError ou data preenchido
 
 ---
 
-## 15. Utilitários — lib/utils.ts
+### 15.4 Criar Cliente
+
+```
+Usuário preenche nome, e-mail, CPF e clica "Criar Cliente"
+  ↓
+handleSubmit() → zodResolver.parse(values)
+  ├── FALHA → errors exibidos nos campos
+  └── SUCESSO → onSubmit(data)
+        ↓
+      criar.mutate(data)  [useCriarCliente]
+        → isPending = true → Button mostra spinner
+        ↓
+      clientesService.criar(data)
+        → cpf.replace(/\D/g, '')  → "787.548.016-72" vira "78754801672"
+        ↓
+      clientesApi.post('/', payload)  [Axios]
+        → Content-Type: application/json
+        ↓
+      Vite Proxy → POST http://localhost:5003/api/clientes/
+        ↓
+      API .NET Clientes
+        → ClientesEndpoints → CriarClienteCommandHandler
+        → FluentValidation (nome, email, cpf 11 chars) → Cliente.Criar() → SaveChanges()
+        → 201 Created + { clienteId: "guid" }
+        ↓
+      onSuccess()
+        → invalidateQueries(['clientes'])
+        → navigate({ to: '/clientes' })
+        ↓
+      ClientesPage → useClientes() re-busca → lista atualizada
+```
+
+**Fluxo de atualização:**
+```
+PUT /clientes/$id/editar
+  ↓
+EditarClientePage
+  → useCliente(id) → GET /api/clientes/{id} → formulário preenchido via reset()
+  ↓
+Usuário altera campos → clica "Salvar Alterações"
+  ↓
+atualizar.mutate({ id, ...data })  [useAtualizarCliente]
+  ↓
+clientesService.atualizar(id, payload)
+  → cpf normalizado com replace(/\D/g, '')
+  ↓
+clientesApi.put(`/${id}`, payload)
+  ↓
+Vite Proxy → PUT http://localhost:5003/api/clientes/{id}
+  ↓
+API .NET Clientes
+  → AtualizarClienteCommandHandler → cliente.Atualizar() → SaveChanges()
+  → 204 No Content
+  ↓
+onSuccess()
+  → invalidateQueries(['clientes'])
+  → invalidateQueries(['clientes', id])
+  → navigate({ to: '/clientes' })
+```
+
+---
+
+## 16. Utilitários — lib/utils.ts
 
 ```
 src/lib/utils.ts
@@ -1504,16 +1953,16 @@ externa — e respeitam as convenções de localidade (vírgula decimal, ponto d
 |--------|----------|
 | `cn()` | Todos os componentes UI (Button, Input, Card, Badge, Navbar, ...) |
 | `formatCurrency()` | ProdutosPage, PedidosPage, NovoPedidoPage, DashboardPage |
-| `formatDate()` | ProdutosPage (`criadoEm`), PedidosPage (`criadoEm` do pedido) |
+| `formatDate()` | ProdutosPage (`criadoEm`), PedidosPage (`criadoEm` do pedido), ClientesPage (`criadoEm`) |
 
 ---
 
-## 16. Diagrama de Dependências entre Camadas
+## 17. Diagrama de Dependências entre Camadas
 
 ```
 main.tsx
   ├── router.ts
-  │     └── RootLayout → Navbar (4 itens: Dashboard, Produtos, Pedidos, CEP) + Outlet
+  │     └── RootLayout → Navbar (5 itens: Dashboard, Produtos, Pedidos, CEP, Clientes) + Outlet
   │
   └── QueryClient (TanStack Query — staleTime 30s, retry 1x)
         │
@@ -1540,54 +1989,69 @@ main.tsx
               │     ├── useProdutos()              → produtosService.listar() (para o <select>)
               │     └── useCriarPedido()           → pedidosService.criar(payload)
               │
-              └── ConsultaCepPage.tsx
-                    └── useCep(cep)                → cepService.consultar(cep)
+              ├── ConsultaCepPage.tsx
+              │     └── useCep(cep)                → cepService.consultar(cep)
+              │
+              ├── ClientesPage.tsx
+              │     ├── useClientes()              → clientesService.listar()
+              │     └── useExcluirCliente()        → clientesService.excluir(id)
+              │
+              ├── NovoClientePage.tsx
+              │     └── useCriarCliente()          → clientesService.criar(payload)
+              │
+              └── EditarClientePage.tsx
+                    ├── useCliente(id)             → clientesService.obterPorId(id)
+                    └── useAtualizarCliente()      → clientesService.atualizar(id, payload)
 
 HOOKS
   ├── useProdutos.ts  → produtosService  (src/services/produtosService.ts)
   ├── usePedidos.ts   → pedidosService   (src/services/pedidosService.ts)
-  └── useCep.ts       → cepService       (src/services/cepService.ts)
-                                           staleTime: 1h | retry: false
+  ├── useCep.ts       → cepService       (src/services/cepService.ts)  staleTime: 1h | retry: false
+  └── useClientes.ts  → clientesService  (src/services/clientesService.ts)
 
 SERVIÇOS
   ├── produtosService.ts → produtosApi  (baseURL: '/api/produtos')
   ├── pedidosService.ts  → pedidosApi   (baseURL: '/api/pedidos')
-  └── cepService.ts      → cepApi       (baseURL: '/api/cep')
+  ├── cepService.ts      → cepApi       (baseURL: '/api/cep')
+  └── clientesService.ts → clientesApi  (baseURL: '/api/clientes')  CPF normalizado com replace(/\D/g, '')
 
-HTTP CLIENT (src/lib/http.ts — 3 instâncias Axios)
+HTTP CLIENT (src/lib/http.ts — 4 instâncias Axios)
   ├── produtosApi → axios.create({ baseURL: '/api/produtos' })
   ├── pedidosApi  → axios.create({ baseURL: '/api/pedidos' })
-  └── cepApi      → axios.create({ baseURL: '/api/cep' })
+  ├── cepApi      → axios.create({ baseURL: '/api/cep' })
+  └── clientesApi → axios.create({ baseURL: '/api/clientes' })
 
 PROXY VITE (vite.config.ts)
   ├── /api/produtos → http://localhost:5001  (Produtos API)
   ├── /api/pedidos  → http://localhost:5002  (Pedidos API)
-  └── /api/cep      → http://localhost:5002  (Pedidos API — que integra com viacep.com.br)
+  ├── /api/cep      → http://localhost:5002  (Pedidos API — que integra com viacep.com.br)
+  └── /api/clientes → http://localhost:5003  (Clientes API — CRUD independente)
 
 TIPOS
-  ├── src/types/produto.ts → Produto, CriarProdutoRequest, AtualizarProdutoRequest
-  ├── src/types/pedido.ts  → Pedido, CriarPedidoRequest, PedidoCriado,
-  │                          ItemPedido, ItemPedidoDetalhe, StatusPedidoNumerico
-  └── src/types/cep.ts     → ViaCep
+  ├── src/types/produto.ts  → Produto, CriarProdutoRequest, AtualizarProdutoRequest
+  ├── src/types/pedido.ts   → Pedido, CriarPedidoRequest, PedidoCriado,
+  │                           ItemPedido, ItemPedidoDetalhe, StatusPedidoNumerico
+  ├── src/types/cep.ts      → ViaCep
+  └── src/types/cliente.ts  → Cliente, CriarClienteRequest, AtualizarClienteRequest, ClienteCriado
 
 COMPONENTES UI (src/components/ui/)
   ├── Button       → todas as ações (navegação, submit, exclusão, busca de CEP)
-  ├── Input        → todos os formulários + busca por clienteId e CEP
+  ├── Input        → todos os formulários + busca por clienteId, CEP e campos de cliente
   ├── Card / CardHeader / CardTitle / CardContent
-  │                → Dashboard, Produtos, Pedidos, ConsultaCepPage
+  │                → Dashboard, Produtos, Pedidos, ConsultaCepPage, Clientes
   ├── Badge        → estoque em Produtos, status em Pedidos
-  ├── EmptyState   → estados vazios em Produtos e Pedidos
+  ├── EmptyState   → estados vazios em Produtos, Pedidos e Clientes
   └── Spinner / PageSpinner
                    → carregamento em todas as páginas + isFetching em ConsultaCepPage
 
 UTILITÁRIOS (src/lib/utils.ts)
   ├── cn()             → todos os componentes UI
   ├── formatCurrency() → Produtos, Pedidos, Dashboard
-  └── formatDate()     → Produtos, Pedidos
+  └── formatDate()     → Produtos, Pedidos, Clientes
 ```
 
 ---
 
 *Documentação gerada para o projeto `Arquitetura.Frontend`. Para a documentação completa
-do backend e da infraestrutura, consulte `Arquitetura.Server/BACKEND.md` e o
+do backend e da infraestrutura, consulte `BACKEND.md` e o
 `README.md` na raiz da solução.*

@@ -1,7 +1,8 @@
 ﻿# Arquitetura de Referência — Microserviços com .NET 10 e React 19
 
 > **Template acadêmico** de uma solução completa, moderna e escalável baseada em microserviços com backend .NET 10 e frontend React 19. Cobre desde os fundamentos arquiteturais até o deploy em containers Docker com mensageria assíncrona via RabbitMQ.
-
+>
+> **Três microserviços independentes:** `Produtos` (catálogo + estoque), `Pedidos` (criação de pedidos + integração ViaCEP) e `Clientes` (CRUD de pessoas físicas) — cada um com banco de dados, migrations e container Docker próprios.
 
 🏛️ "Microservices Reference Architecture" com as seguintes camadas conceituais:
 
@@ -25,44 +26,35 @@ npm run dev
 
 ### Estilo Arquitetural
 
-
-
-Microservices Architecture	Produtos e Pedidos como serviços independentes
-
-Database per Service	SQL Server separado por serviço
-
-Event-Driven Architecture (EDA)	RabbitMQ + MassTransit para comunicação assíncrona
+| Estilo | Aplicação na solução |
+|--------|----------------------|
+| Microservices Architecture | Produtos, Pedidos e Clientes como serviços independentes |
+| Database per Service | SQL Server separado por serviço (3 bancos isolados) |
+| Event-Driven Architecture (EDA) | RabbitMQ + MassTransit para comunicação assíncrona |
 
 - --
 
 ### Padrões de Design
 
-
-
-Clean Architecture (Robert C. Martin)	Camadas Domain → Application → Infrastructure → API
-
-Domain-Driven Design (DDD) (Eric Evans)	Aggregates, Entities, Value Objects, Ubiquitous Language
-
-CQRS (Greg Young)	Commands e Queries separados via MediatR
-
-Hexagonal Architecture (Ports & Adapters)	Interfaces na Application, implementações na Infrastructure
+| Padrão | Aplicação |
+|--------|-----------|
+| Clean Architecture (Robert C. Martin) | Camadas Domain → Application → Infrastructure → API |
+| Domain-Driven Design (DDD) (Eric Evans) | Aggregates, Entities, Value Objects, Ubiquitous Language |
+| CQRS (Greg Young) | Commands e Queries separados via MediatR |
+| Hexagonal Architecture (Ports & Adapters) | Interfaces na Application, implementações na Infrastructure |
 
 - --
 
 ### Padrões de Código
 
-
-Result Pattern	Sem exceptions para fluxos de negócio
-
-Mediator Pattern	MediatR desacopla handlers
-
-Repository + Unit of Work	Abstração de persistência
-
-Pipeline Behavior	Cross-cutting concerns (validação, logging)
-
-Typed HttpClient	Comunicação síncrona entre serviços
-
-Integration Events	Contrato de mensageria entre bounded contexts
+| Padrão | Benefício |
+|--------|-----------|
+| Result Pattern | Sem exceptions para fluxos de negócio |
+| Mediator Pattern | MediatR desacopla handlers |
+| Repository + Unit of Work | Abstração de persistência |
+| Pipeline Behavior | Cross-cutting concerns (validação, logging) |
+| Typed HttpClient | Comunicação síncrona entre serviços |
+| Integration Events | Contrato de mensageria entre bounded contexts |
 
 - --
 
@@ -70,23 +62,19 @@ Integration Events	Contrato de mensageria entre bounded contexts
 
 Se fosse publicar ou documentar formalmente, o nome seria:
 
-"Clean Architecture / DDD-based Microservices with CQRS and Event-Driven Communication"
+**"Clean Architecture / DDD-based Microservices with CQRS and Event-Driven Communication"**
 
 - --
 
 ### Referências Canônicas
 
-Livro / Autor	Conceito coberto
-
-Clean Architecture — Robert C. Martin	Camadas, dependências
-
-Domain-Driven Design — Eric Evans	DDD, Bounded Contexts
-
-Implementing DDD — Vaughn Vernon	Aggregates, Integration Events
-
-.NET Microservices Architecture — Microsoft	Padrão geral desta solução
-
-Enterprise Integration Patterns — Hohpe & Woolf	Mensageria, EDA
+| Livro / Autor | Conceito coberto |
+|---------------|-----------------|
+| Clean Architecture — Robert C. Martin | Camadas, dependências |
+| Domain-Driven Design — Eric Evans | DDD, Bounded Contexts |
+| Implementing DDD — Vaughn Vernon | Aggregates, Integration Events |
+| .NET Microservices Architecture — Microsoft | Padrão geral desta solução |
+| Enterprise Integration Patterns — Hohpe & Woolf | Mensageria, EDA |
 
 ---
 
@@ -131,6 +119,8 @@ Enterprise Integration Patterns — Hohpe & Woolf	Mensageria, EDA
 7. [Fluxos de Dados Detalhados](#7-fluxos-de-dados-detalhados)
    - 7.1 [Fluxo: Criar Produto](#71-fluxo-criar-produto)
    - 7.2 [Fluxo: Criar Pedido e Debitar Estoque](#72-fluxo-criar-pedido-e-debitar-estoque)
+   - 7.3 [Fluxo: Consultar CEP](#73-fluxo-consultar-cep)
+   - 7.4 [Fluxo: Criar Cliente](#74-fluxo-criar-cliente)
 8. [Como Executar a Solução](#8-como-executar-a-solução)
    - 8.1 [Pré-requisitos](#81-pré-requisitos)
    - 8.2 [Executando com Docker Compose](#82-executando-com-docker-compose)
@@ -144,41 +134,42 @@ Enterprise Integration Patterns — Hohpe & Woolf	Mensageria, EDA
 
 ## 1. Visão Geral da Solução
 
-Esta solução é um **template de referência** que demonstra como construir um sistema distribuído usando as melhores práticas do ecossistema .NET e React. Ela simula um domínio de comércio eletrônico com dois microserviços independentes:
+Esta solução é um **template de referência** que demonstra como construir um sistema distribuído usando as melhores práticas do ecossistema .NET e React. Ela simula um domínio de comércio eletrônico com **três microserviços independentes**:
 
-| Serviço | Responsabilidade | Porta |
-|---------|-----------------|-------|
+| Serviço | Responsabilidade | Porta local |
+|---------|-----------------|-------------|
 | **Produtos API** | Gerenciamento do catálogo de produtos e controle de estoque | `5001` |
-| **Pedidos API** | Criação e consulta de pedidos, orquestração do fluxo de compra e consulta de CEP | `5002` |
-| **React Client** | Interface web que consome ambas as APIs e expõe consulta de CEP | `5173` |
-| **RabbitMQ** | Broker de mensagens para comunicação assíncrona | `15672` (UI) |
+| **Pedidos API** | Criação e consulta de pedidos, orquestração do fluxo de compra e consulta de CEP (ViaCEP) | `5002` |
+| **Clientes API** | CRUD completo de pessoas físicas (nome, e-mail, CPF) — banco isolado, sem mensageria | `5003` |
+| **React Client** | Interface web que consome as três APIs e expõe consulta de CEP | `5173` |
+| **RabbitMQ** | Broker de mensagens para comunicação assíncrona entre Pedidos e Produtos | `15672` (UI) |
 
 **Diagrama de alto nível:**
 
 ```
-???????????????????????????????????????????????????????????????
-?                     React Client (5173)                     ?
-?           TanStack Router + Query + React Hook Form         ?
-?????????????????????????????????????????????????????????????-?
-           ? HTTP /api/produtos          ? HTTP /api/pedidos
-           ?                            ?
-????????????????????         ????????????????????????
-?   Produtos API   ???????????    Pedidos API        ?
-?   (porta 5001)   ? HTTP    ?    (porta 5002)        ?
-?                  ? síncrono?                        ?
-?  ??????????????  ?         ?  ???????????????????  ?
-?  ? SQL Server ?  ?         ?  ?   SQL Server    ?  ?
-?  ? ProdutosDb ?  ?         ?  ?   PedidosDb     ?  ?
-?  ??????????????  ?         ?  ???????????????????  ?
-????????????????????         ??????????????????????????
-           ?                            ? Publica
-           ? Consome                    ? PedidoConfirmadoEvent
-           ??????????????????????????????
-                        ?
-               ???????????????????
-               ?    RabbitMQ     ?
-               ?  (porta 5672)   ?
-               ???????????????????
+┌─────────────────────────────────────────────────────────────┐
+│                  React Client (5173)                        │
+│   TanStack Router + Query + React Hook Form + Zod           │
+│   /produtos  /pedidos  /cep  /clientes  / (dashboard)       │
+└──────────┬──────────────┬──────────────┬────────────────────┘
+           │ /api/produtos │ /api/pedidos │ /api/clientes
+           ▼               ▼              ▼
+┌────────────────┐  ┌──────────────────┐  ┌─────────────────┐
+│  Produtos API  │◄─┤   Pedidos API    │  │  Clientes API   │
+│  (porta 5001)  │  │  (porta 5002)    │  │  (porta 5003)   │
+│                │  │  ↕ viacep.com.br │  │                 │
+│  ┌──────────┐  │  │  ┌────────────┐  │  │  ┌───────────┐  │
+│  │SQL Server│  │  │  │ SQL Server │  │  │  │SQL Server │  │
+│  │ProdutosDb│  │  │  │ PedidosDb  │  │  │  │ClientesDb │  │
+│  └──────────┘  │  │  └────────────┘  │  │  └───────────┘  │
+└────────┬───────┘  └────────┬─────────┘  └─────────────────┘
+         │ Consome            │ Publica
+         │◄───────────────────┘ PedidoConfirmadoEvent
+                    ▼
+           ┌─────────────────┐
+           │    RabbitMQ     │
+           │  (porta 5672)   │
+           └─────────────────┘
 ```
 
 ---
@@ -187,66 +178,89 @@ Esta solução é um **template de referência** que demonstra como construir um
 
 ```
 Arquitetura/
-??? shared/
-?   ??? Arquitetura.SharedKernel/       # Contratos e primitivas compartilhadas
-?       ??? Common/
-?       ?   ??? Result.cs               # Result Pattern genérico
-?       ?   ??? Error.cs                # Representação de erro tipado
-?       ??? Exceptions/
-?       ?   ??? DomainException.cs      # Exceção base de domínio
-?       ??? Messaging/
-?       ?   ??? IIntegrationEvent.cs    # Contrato de Integration Event
-?       ?   ??? PedidoConfirmadoIntegrationEvent.cs
-?       ??? Primitives/
-?           ??? Entity.cs               # Classe base com Id e Domain Events
-?           ??? IDomainEvent.cs         # Marcador de Domain Event
-?
-??? services/
-?   ??? Produtos/
-?   ?   ??? Produtos.Domain/            # Regras de negócio puras
-?   ?   ?   ??? Entities/Produto.cs
-?   ?   ?   ??? Exceptions/ProdutoException.cs
-?   ?   ??? Produtos.Application/       # Casos de uso (CQRS)
-?   ?   ?   ??? Abstractions/           # Interfaces de repositório e UoW
-?   ?   ?   ??? Features/
-?   ?   ?       ??? Commands/           # CriarProduto, AtualizarProduto, DeletarProduto
-?   ?   ?       ??? Queries/            # ListarProdutos, ObterProdutoPorId
-?   ?   ??? Produtos.Infrastructure/    # Implementações técnicas
-?   ?   ?   ??? Data/                   # DbContext, Migrations, Configurations
-?   ?   ?   ??? Messaging/              # PedidoConfirmadoConsumer (RabbitMQ)
-?   ?   ?   ??? Repositories/          # Implementação do IProdutoRepository
-?   ?   ??? Produtos.Api/              # Host HTTP
-?   ?       ??? Endpoints/             # Minimal API endpoints
-?   ?       ??? Middleware/            # ExceptionHandlingMiddleware
-?   ?       ??? Dockerfile
-?   ?       ??? Program.cs
-?   ?
-?   ??? Pedidos/
-?       ??? Pedidos.Domain/            # Entidades Pedido e ItemPedido
-?       ??? Pedidos.Application/       # CriarPedido, ListarPedidosPorCliente
-?       ??? Pedidos.Infrastructure/
-?       ?   ??? Http/                  # ProdutosServiceClient (HttpClient tipado)
-?       ?   ??? Messaging/             # MassTransitEventPublisher
-?       ??? Pedidos.Api/
-?
-??? arquitetura.client/                # Frontend React
-?   ??? src/
-?       ??? components/
-?       ?   ??? layout/                # RootLayout, Navbar
-?       ?   ??? ui/                    # Button, Input, Card, Badge, Spinner...
-?       ??? hooks/                     # useProdutos, usePedidos (TanStack Query)
-?       ??? lib/                       # http.ts (Axios), utils.ts
-?       ??? pages/
-?       ?   ??? dashboard/
-?       ?   ??? produtos/
-?       ?   ??? pedidos/
-?       ??? services/                  # produtosService, pedidosService
-?       ??? types/                     # Tipagens TypeScript dos DTOs
-?       ??? router.ts                  # TanStack Router
-?       ??? main.tsx                   # Entry point
-?
-??? docker-compose.yml
-??? .env                               # Variáveis sensíveis (não versionado)
+├── Arquitetura.Shared/
+│   └── Arquitetura.SharedKernel/       # Contratos e primitivas compartilhadas
+│       ├── Common/
+│       │   ├── Result.cs               # Result Pattern genérico
+│       │   └── Error.cs                # Representação de erro tipado
+│       ├── Exceptions/
+│       │   └── DomainException.cs      # Exceção base de domínio
+│       ├── Messaging/
+│       │   ├── IIntegrationEvent.cs    # Contrato de Integration Event
+│       │   └── PedidoConfirmadoIntegrationEvent.cs
+│       └── Primitives/
+│           ├── Entity.cs               # Classe base com Id e Domain Events
+│           └── IDomainEvent.cs         # Marcador de Domain Event
+│
+├── Arquitetura.Backend/
+│   ├── Produtos/
+│   │   ├── Produtos.Domain/            # Regras de negócio puras
+│   │   │   ├── Entities/Produto.cs
+│   │   │   └── Exceptions/ProdutoException.cs
+│   │   ├── Produtos.Application/       # Casos de uso (CQRS)
+│   │   │   ├── Abstractions/           # IProdutoRepository, IUnitOfWork
+│   │   │   └── Features/
+│   │   │       ├── Commands/           # CriarProduto, AtualizarProduto, DeletarProduto
+│   │   │       └── Queries/            # ListarProdutos, ObterProdutoPorId
+│   │   ├── Produtos.Infrastructure/    # Implementações técnicas
+│   │   │   ├── Data/                   # DbContext, Migrations, Configurations
+│   │   │   ├── Messaging/              # PedidoConfirmadoConsumer (RabbitMQ)
+│   │   │   └── Repositories/           # ProdutoRepository
+│   │   └── Produtos.Api/               # Host HTTP
+│   │       ├── Endpoints/              # ProdutosEndpoints (Minimal API)
+│   │       ├── Middleware/             # ExceptionHandlingMiddleware
+│   │       ├── Dockerfile
+│   │       └── Program.cs
+│   │
+│   ├── Pedidos/
+│   │   ├── Pedidos.Domain/             # Entidades Pedido, ItemPedido, StatusPedido
+│   │   ├── Pedidos.Application/        # CriarPedido, ListarPedidosPorCliente, ConsultarCep
+│   │   │   └── Abstractions/           # IPedidoRepository, IProdutosServiceClient,
+│   │   │                               # IViaCepClient, IEventPublisher
+│   │   ├── Pedidos.Infrastructure/
+│   │   │   ├── Http/                   # ProdutosServiceClient, ViaCepClient
+│   │   │   └── Messaging/              # MassTransitEventPublisher
+│   │   └── Pedidos.Api/
+│   │       ├── Endpoints/              # PedidosEndpoints, CepEndpoints
+│   │       ├── Middleware/
+│   │       ├── Dockerfile
+│   │       └── Program.cs
+│   │
+│   └── Clientes/
+│       ├── Clientes.Domain/            # Entidade Cliente, ClienteException
+│       ├── Clientes.Application/       # CRUD commands/queries, behaviors
+│       │   └── Abstractions/           # IClienteRepository, IUnitOfWork
+│       ├── Clientes.Infrastructure/    # EF Core, migrations, ClienteRepository
+│       │   └── Data/                   # ClientesDbContext, ClienteConfiguration
+│       └── Clientes.Api/               # Host HTTP
+│           ├── Endpoints/              # ClientesEndpoints (Minimal API)
+│           ├── Middleware/
+│           ├── Dockerfile
+│           └── Program.cs
+│
+├── Arquitetura.Frontend/               # Frontend React 19 + Vite
+│   └── src/
+│       ├── components/
+│       │   ├── layout/                 # RootLayout, Navbar (5 itens)
+│       │   └── ui/                     # Button, Input, Card, Badge, Spinner, EmptyState
+│       ├── hooks/                      # useProdutos, usePedidos, useCep, useClientes
+│       ├── lib/                        # http.ts (4 instâncias Axios), utils.ts
+│       ├── pages/
+│       │   ├── dashboard/              # DashboardPage
+│       │   ├── produtos/               # ProdutosPage, NovoProdutoPage, EditarProdutoPage
+│       │   ├── pedidos/                # PedidosPage, NovoPedidoPage
+│       │   ├── cep/                    # ConsultaCepPage
+│       │   └── cliente/                # ClientesPage, NovoClientePage, EditarClientePage
+│       ├── services/                   # produtosService, pedidosService, cepService,
+│       │                               # clientesService (com normalização de CPF)
+│       ├── types/                      # produto.ts, pedido.ts, cep.ts, cliente.ts
+│       ├── router.ts                   # TanStack Router (10 rotas)
+│       └── main.tsx                    # Entry point + QueryClient
+│
+├── docker-compose.yml                  # Orquestra 7 containers
+├── BACKEND.md                          # Documentação detalhada do backend
+├── FRONTEND.md                         # Documentação detalhada do frontend
+└── README.md                           # Este arquivo — visão geral da solução
 ```
 
 ---
@@ -258,15 +272,16 @@ Arquitetura/
 **Definição:** Estilo arquitetural onde a aplicação é dividida em serviços pequenos, independentes, cada um com sua própria responsabilidade de negócio, banco de dados e ciclo de deploy.
 
 **Nesta solução:**
-- `Produtos` e `Pedidos` são serviços completamente independentes
+- `Produtos`, `Pedidos` e `Clientes` são serviços completamente independentes
 - Cada um tem seu próprio processo, banco de dados e container Docker
-- A comunicação ocorre de duas formas: síncrona (HTTP) e assíncrona (RabbitMQ)
-- Um serviço pode ser escalado, atualizado ou reiniciado sem afetar o outro
+- `Pedidos` se comunica com `Produtos` de forma síncrona (HTTP) ao criar um pedido e assíncrona (RabbitMQ) para debitar estoque
+- `Clientes` é um CRUD puro — não publica nem consome eventos, não faz HTTP para outros serviços
+- Um serviço pode ser escalado, atualizado ou reiniciado sem afetar os demais
 
 **Benefícios demonstrados:**
-- Isolamento de falhas: se `Pedidos` cair, `Produtos` continua operacional
+- Isolamento de falhas: se `Pedidos` cair, `Produtos` e `Clientes` continuam operacionais
 - Escalabilidade independente: pode-se escalar só a API com maior carga
-- Times diferentes podem trabalhar em paralelo em cada serviço
+- Times diferentes podem trabalhar em paralelo em cada bounded context
 
 ### 3.2 Clean Architecture
 
@@ -275,15 +290,15 @@ Arquitetura/
 **Camadas implementadas por serviço:**
 
 ```
-????????????????????????????????????????????
-?              API (Presentation)          ?  ? Endpoints, Middleware, Dockerfile
-????????????????????????????????????????????
-?           Application (Use Cases)        ?  ? Commands, Queries, Handlers
-????????????????????????????????????????????
-?             Domain (Entities)            ?  ? Entidades, Exceções de Domínio
-????????????????????????????????????????????
-?         Infrastructure (Technical)       ?  ? EF Core, RabbitMQ, HttpClient
-????????????????????????????????????????????
+┌────────────────────────────────────────────┐
+│          API (Presentation)                │  → Endpoints, Middleware, Dockerfile
+├────────────────────────────────────────────┤
+│        Application (Use Cases)             │  → Commands, Queries, Handlers
+├────────────────────────────────────────────┤
+│           Domain (Entities)                │  → Entidades, Exceções de Domínio
+├────────────────────────────────────────────┤
+│       Infrastructure (Technical)           │  → EF Core, RabbitMQ, HttpClient
+└────────────────────────────────────────────┘
 ```
 
 **Regra de dependência:**
@@ -583,11 +598,11 @@ MassTransit é uma abstração de mensageria que suporta vários brokers (Rabbit
 
 ```
 Pedidos API          RabbitMQ             Produtos API
-    ?                   ?                     ?
-    ???Publish Event??????                     ?
-    ?  PedidoConfirmado  ???Deliver Message?????
-    ?                   ?                     ???DebitarEstoque()
-    ?                   ?                     ???SaveChanges()
+    |                   |                     |
+    +--Publish Event---->|                     |
+    |  PedidoConfirmado  +--Deliver Message---->|
+    |                   |                     +--DebitarEstoque()
+    |                   |                     +--SaveChanges()
 ```
 
 **Publisher (Pedidos.Infrastructure):**
@@ -812,6 +827,19 @@ export interface ViaCep {
   ddd: string;
   siafi: string;
 }
+
+// src/types/cliente.ts
+export interface Cliente {
+  id: string;
+  nome: string;
+  email: string;
+  cpf: string;          // somente dígitos (11 chars) — formatação é responsabilidade do frontend
+  criadoEm: string;
+  atualizadoEm?: string;
+}
+export interface CriarClienteRequest  { nome: string; email: string; cpf: string; }
+export interface AtualizarClienteRequest { nome: string; email: string; cpf: string; }
+export type ClienteCriado = string; // GUID retornado pelo POST /api/clientes
 ```
 
 **Alias de path**
@@ -1015,11 +1043,11 @@ server: {
 **Como funciona o proxy:**
 ```
 Browser                   Vite Dev Server           Backend
-  ?                            ?                       ?
-  ???GET /api/produtos/??????????                       ?
-  ?                            ???GET /api/produtos/?????
-  ?                            ????200 JSON??????????????
-  ????200 JSON??????????????????                       ?
+  |                            |                       |
+  +--GET /api/produtos/-------->|                       |
+  |                            +--GET /api/produtos/--->|
+  |                            |<--200 JSON-------------|
+  |<--200 JSON-----------------|                       |
 ```
 
 ### 5.8 Arquitetura de Componentes do Cliente
@@ -1046,13 +1074,16 @@ components/layout/ -> Shell da aplicação
 
 | Página | Rota | Responsabilidade |
 |--------|------|------------------|
-| `DashboardPage` | `/` | Visão geral com cards de resumo |
-| `ProdutosPage` | `/produtos` | Listagem com filtro e ações |
-| `NovoProdutoPage` | `/produtos/novo` | Formulário de criação |
-| `EditarProdutoPage` | `/produtos/$id/editar` | Formulário de edição |
-| `PedidosPage` | `/pedidos` | Listagem de pedidos por cliente |
-| `NovoPedidoPage` | `/pedidos/novo` | Formulário de criação de pedido |
+| `DashboardPage` | `/` | Visão geral com cards de resumo de produtos |
+| `ProdutosPage` | `/produtos` | Listagem com exclusão inline |
+| `NovoProdutoPage` | `/produtos/novo` | Formulário de criação com validação Zod |
+| `EditarProdutoPage` | `/produtos/$id/editar` | Formulário de edição pré-populado |
+| `PedidosPage` | `/pedidos` | Listagem de pedidos por clienteId |
+| `NovoPedidoPage` | `/pedidos/novo` | Formulário de criação de pedido com seleção de produtos |
 | `ConsultaCepPage` | `/cep` | Consulta de endereço por CEP via ViaCEP |
+| `ClientesPage` | `/clientes` | Listagem de clientes com exclusão inline de dois passos |
+| `NovoClientePage` | `/clientes/novo` | Formulário de criação com CPF mascarado |
+| `EditarClientePage` | `/clientes/$id/editar` | Formulário de edição pré-populado via `useCliente(id)` |
 
 **Componentes UI criados:**
 
@@ -1083,13 +1114,25 @@ Cada microserviço é empacotado em um container Docker independente. Os contain
 
 ### 6.2 Docker Compose
 
-O `docker-compose.yml` orquestra todos os 5 containers com suas dependências, redes e volumes.
+O `docker-compose.yml` orquestra todos os **7 containers** com suas dependências, redes e volumes:
+
+| Container | Imagem | Porta |
+|-----------|--------|-------|
+| `sqlserver-produtos` | `mssql/server:2022-latest` | interno |
+| `sqlserver-pedidos` | `mssql/server:2022-latest` | interno |
+| `sqlserver-clientes` | `mssql/server:2022-latest` | interno |
+| `rabbitmq` | `rabbitmq:3.13-management` | `15672` (UI), `5672` |
+| `produtos-api` | multi-stage build | `5001` |
+| `pedidos-api` | multi-stage build | `5002` |
+| `clientes-api` | multi-stage build | `5003` |
 
 **Ordem de inicialização com healthchecks:**
 ```
-sqlserver-produtos ??healthy??? produtos-api ??healthy???
-sqlserver-pedidos  ??healthy???                          ???? pedidos-api
-rabbitmq           ??healthy???????????????????????????????
+sqlserver-produtos ──healthy──► produtos-api ──healthy──►
+sqlserver-pedidos  ──healthy──►                           ├──► pedidos-api
+rabbitmq           ──healthy──►───────────────────────────┘
+
+sqlserver-clientes ──healthy──► clientes-api
 ```
 
 **Rede interna:**
@@ -1104,6 +1147,7 @@ networks:
 volumes:
   sqlserver-produtos-data:  # dados do SQL Server sobrevivem ao restart
   sqlserver-pedidos-data:
+  sqlserver-clientes-data:
   rabbitmq-data:
 ```
 
@@ -1112,7 +1156,7 @@ volumes:
 Técnica Docker para separar o ambiente de build do ambiente de execução, resultando em imagens de produção menores e mais seguras.
 
 ```dockerfile
-# ?? STAGE 1: Build ??????????????????????????????????????????
+# ── STAGE 1: Build ────────────────────────────────────────────
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
@@ -1129,7 +1173,7 @@ COPY services/Produtos/ services/Produtos/
 RUN dotnet publish services/Produtos/Produtos.Api/Produtos.Api.csproj \
     -c Release -o /app/publish --no-restore
 
-# ?? STAGE 2: Runtime ?????????????????????????????????????????
+# ── STAGE 2: Runtime ───────────────────────────────────────────
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 
@@ -1166,49 +1210,48 @@ RabbitMQ implementa o protocolo AMQP (Advanced Message Queuing Protocol) e forne
 ### 7.1 Fluxo: Criar Produto
 
 ```
-React Client                 Produtos API              SQL Server
-     ?                            ?                        ?
-     ???POST /api/produtos ?????????                        ?
-     ?  { nome, descricao,         ?                        ?
-     ?    preco, estoque }         ?                        ?
-     ?                            ??? ValidationBehavior   ?
-     ?                            ?   (FluentValidation)   ?
-     ?                            ?                        ?
-     ?                            ??? CriarProdutoHandler  ?
-     ?                            ?   Produto.Criar(...)   ?
-     ?                            ?   repository.Add(...)  ?
-     ?                            ???INSERT INTO Produtos????
-     ?                            ????OK????????????????????
-     ?                            ?   unitOfWork.Save()    ?
-     ?                            ?                        ?
-     ????201 Created ??????????????                        ?
-     ?   Location: /api/produtos/{id}                      ?
+React Client           Produtos API (5001)          SQL Server
+     |                       |                          |
+     +--POST /api/produtos--->|                          |
+     |  { nome, descricao,    |                          |
+     |    preco, estoque }    |                          |
+     |                       +--ValidationBehavior       |
+     |                       |  (FluentValidation)       |
+     |                       |                          |
+     |                       +--CriarProdutoHandler      |
+     |                       |  Produto.Criar(...)       |
+     |                       |  repository.Add(...)      |
+     |                       +--INSERT INTO Produtos----->|
+     |                       |<--OK----------------------|
+     |                       |  unitOfWork.Save()        |
+     |                       |                          |
+     |<--201 Created----------+                          |
+     |   Location: /api/produtos/{id}                    |
 ```
 
 ### 7.2 Fluxo: Criar Pedido e Debitar Estoque
 
 ```
-React         Pedidos API      Produtos API     RabbitMQ    Produtos API
-Client            ?                ?               ?          (Consumer)
-  ?               ?                ?               ?              ?
-  ???POST ??????????                ?               ?              ?
-  ?  /api/pedidos  ?                ?               ?              ?
-  ?                ???GET produto????               ?              ?
-  ?                ????ProdutoDto????               ?              ?
-  ?                ?                ?               ?              ?
-  ?                ? Pedido.Criar() ?               ?              ?
-  ?                ? AdicionarItem()?               ?              ?
-  ?                ? Confirmar()    ?               ?              ?
-  ?                ???INSERT Pedido?????????????????????????????????
-  ?                ???Publish Event???????????????????              ?
-  ?                ?  PedidoConfirmado               ???Deliver??????
-  ????201 Created???                ?               ?  ?           ?
-  ?                ?                ?               ?  ? DebitarEstoque()
-  ?                ?                ?               ?  ? SaveChanges()
-  ?                ?                ?               ???Ack???????????
+React         Pedidos API (5002)  Produtos API (5001)  RabbitMQ   Produtos API
+Client             |                   |                  |         (Consumer)
+  |                |                   |                  |              |
+  +--POST -------->|                   |                  |              |
+  |  /api/pedidos  |                   |                  |              |
+  |                +--GET /produto---->|                  |              |
+  |                |<--ProdutoDto------|                  |              |
+  |                |                   |                  |              |
+  |                | Pedido.Criar()    |                  |              |
+  |                | AdicionarItem()   |                  |              |
+  |                | Confirmar()       |                  |              |
+  |                +--INSERT Pedido--->|                  |              |
+  |                +--Publish Event--->|-->PedidoConfirmado+              |
+  |<--201 Created--|                   |                  +--Deliver----->|
+  |                |                   |                  |  DebitarEstoque()
+  |                |                   |                  |  SaveChanges()
+  |                |                   |                  |<--Ack---------|
 ```
 
-**Ponto-chave:** O cliente recebe a resposta `201 Created` imediatamente após a persistência do pedido. O débito de estoque acontece de forma assíncrona, desacoplando a latência do pedido do processamento do estoque.
+**Ponto-chave:** O cliente recebe `201 Created` imediatamente após a persistência do pedido. O débito de estoque acontece de forma assíncrona, desacoplando a latência do pedido do processamento do estoque.
 
 ### 7.3 Fluxo: Consultar CEP
 
@@ -1232,6 +1275,30 @@ React Client          Pedidos API (5002)         ViaCEP (externo)
 ```
 
 **Ponto-chave:** O frontend nunca acessa `viacep.com.br` diretamente. A Pedidos API atua como proxy, centralizando o tratamento de erros (CEP inválido, timeout) e mantendo o frontend desacoplado de APIs externas.
+
+### 7.4 Fluxo: Criar Cliente
+
+```
+React Client          Clientes API (5003)         SQL Server (ClientesDb)
+     |                      |                               |
+     +--POST /api/clientes-->|                               |
+     |  { nome, email,       |                               |
+     |    cpf (só dígitos) } |                               |
+     |                       +--ValidationBehavior           |
+     |                       |  nome, email, CPF (11 dígitos)|
+     |                       |                               |
+     |                       +--CriarClienteHandler          |
+     |                       |  Cliente.Criar(...)           |
+     |                       |  repository.Add(...)          |
+     |                       +--INSERT INTO Clientes-------->|
+     |                       |<--OK--------------------------|
+     |                       |  unitOfWork.Save()            |
+     |                       |                               |
+     |<--201 Created----------+                               |
+     |   { clienteId: "guid" }                               |
+```
+
+**Ponto-chave:** Clientes é um CRUD autônomo — sem eventos para RabbitMQ, sem chamadas HTTP a outros serviços. O CPF é normalizado no frontend (`clientesService.ts`) antes do envio, garantindo que o backend receba apenas os 11 dígitos.
 
 ---
 
@@ -1323,6 +1390,17 @@ O cliente já está configurado com proxy para as APIs. Certifique-se de que as 
 | `GET` | `/api/cep/{cep}` | Consulta endereço por CEP (via ViaCEP) | — |
 | `GET` | `/health` | Health check | — |
 
+### Clientes API — `http://localhost:5003`
+
+| Método | Rota | Descrição | Body |
+|--------|------|-----------|------|
+| `GET` | `/api/clientes` | Lista todos os clientes | — |
+| `GET` | `/api/clientes/{id}` | Obtém cliente por Id | — |
+| `POST` | `/api/clientes` | Cria novo cliente | `{ nome, email, cpf }` |
+| `PUT` | `/api/clientes/{id}` | Atualiza cliente | `{ nome, email, cpf }` |
+| `DELETE` | `/api/clientes/{id}` | Remove cliente | — |
+| `GET` | `/health` | Health check | — |
+
 **Exemplo de payload para criar pedido:**
 ```json
 {
@@ -1330,6 +1408,15 @@ O cliente já está configurado com proxy para as APIs. Certifique-se de que as 
   "itens": [
     { "produtoId": "ee74c967-144a-4879-8dcb-82608f3e71f2", "quantidade": 2 }
   ]
+}
+```
+
+**Exemplo de payload para criar cliente:**
+```json
+{
+  "nome": "João Silva",
+  "email": "joao.silva@example.com",
+  "cpf": "12345678901"
 }
 ```
 
@@ -1357,14 +1444,15 @@ O cliente já está configurado com proxy para as APIs. Certifique-se de que as 
 
 | Variável | Serviço | Descrição |
 |---------|---------|-----------|
-| `SA_PASSWORD` | SQL Server | Senha do usuário `sa` |
+| `SA_PASSWORD` | SQL Server (todos) | Senha do usuário `sa` |
 | `ConnectionStrings__ProdutosConnection` | produtos-api | Connection string do SQL Server Produtos |
 | `ConnectionStrings__PedidosConnection` | pedidos-api | Connection string do SQL Server Pedidos |
-| `RabbitMQ__Host` | ambas as APIs | Hostname do RabbitMQ (`rabbitmq` na rede Docker) |
-| `RabbitMQ__Username` | ambas as APIs | Usuário do RabbitMQ |
-| `RabbitMQ__Password` | ambas as APIs | Senha do RabbitMQ |
+| `ConnectionStrings__ClientesConnection` | clientes-api | Connection string do SQL Server Clientes |
+| `RabbitMQ__Host` | produtos-api, pedidos-api | Hostname do RabbitMQ (`rabbitmq` na rede Docker) |
+| `RabbitMQ__Username` | produtos-api, pedidos-api | Usuário do RabbitMQ |
+| `RabbitMQ__Password` | produtos-api, pedidos-api | Senha do RabbitMQ |
 | `Services__ProdutosUrl` | pedidos-api | URL base da API de Produtos para comunicação interna |
-| `ASPNETCORE_ENVIRONMENT` | ambas as APIs | `Development` ou `Production` |
+| `ASPNETCORE_ENVIRONMENT` | todas as APIs | `Development` ou `Production` |
 
 ### Frontend (Vite)
 
@@ -1387,6 +1475,8 @@ O Vite usa o proxy configurado em `vite.config.ts`. Não há variáveis de ambie
 | **Result Pattern em vez de Exceptions** | Fluxos de negócio esperados não são exceções | Necessário propagar `Result` por toda a cadeia de chamadas |
 | **CEP no serviço Pedidos** | CEP é diretamente relevante ao endereço de entrega de um pedido | Acoplamento leve de responsabilidade; seria um microserviço excessivo separado |
 | **Frontend como proxy para ViaCEP** | Centraliza tratamento de erros e evita CORS no browser | Adiciona latência extra de um hop; mitigado por `staleTime` longo no TanStack Query |
+| **Clientes como CRUD puro sem mensageria** | Demonstra que nem todo bounded context precisa de eventos ou comunicação entre serviços | Em um sistema real, Pedidos provavelmente consultaria Clientes via HTTP |
+| **CPF normalizado no frontend** | Separação de responsabilidades: a UI aplica a máscara, o serviço envia apenas dígitos | CPF inválido estruturalmente é detectado no backend; a máscara visual fica no browser |
 
 ---
 
@@ -1422,7 +1512,10 @@ O Vite usa o proxy configurado em `vite.config.ts`. Não há variáveis de ambie
 | **Unit of Work** | Padrão que agrupa operações de banco em uma única transação |
 | **Value Object** | Objeto do domínio sem identidade própria, definido apenas por seus atributos |
 | **ViaCEP** | API pública brasileira que retorna dados de endereço a partir de um CEP |
+| **CRUD** | Create, Read, Update, Delete — operações básicas de persistência de dados |
+| **CPF** | Cadastro de Pessoas Físicas — identificador fiscal brasileiro de 11 dígitos |
+| **Bounded Context** | Fronteira explícita dentro da qual um modelo de domínio específico é válido e consistente |
 
 ---
 
-*Este template foi construído com fins educacionais e de referência arquitetural. Cada decisão foi tomada visando demonstrar as melhores práticas do ecossistema .NET 10 e React 19 em um cenário realista de microserviços.*
+*Este template foi construído com fins educacionais e de referência arquitetural. Cada decisão foi tomada visando demonstrar as melhores práticas do ecossistema .NET 10 e React 19 em um cenário realista de microserviços com três bounded contexts independentes: Produtos, Pedidos e Clientes.*

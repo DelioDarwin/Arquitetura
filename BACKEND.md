@@ -1,6 +1,6 @@
 ﻿# Documentação do Backend — Arquitetura de Microserviços .NET 10
 
-> Guia de estudo detalhado que explica cada camada do backend, do recebimento de uma requisição HTTP até a persistência no banco de dados e a troca de mensagens entre serviços. O CRUD de **Produtos** é usado como caso de estudo principal, com o fluxo de **Pedidos** explicando a comunicação entre serviços, incluindo a integração com a API pública **ViaCEP**.
+> Guia de estudo detalhado que explica cada camada do backend, do recebimento de uma requisição HTTP até a persistência no banco de dados e a troca de mensagens entre serviços. O CRUD de **Produtos** é usado como caso de estudo principal, com o fluxo de **Pedidos** explicando a comunicação entre serviços (incluindo a integração com a API pública **ViaCEP**), e o serviço de **Clientes** demonstrando um CRUD completo e independente seguindo os mesmos padrões arquiteturais.
 
 ---
 
@@ -49,34 +49,42 @@
    - 9.3 [ViaCepClient — Implementação HTTP em Infrastructure](#93-viacepcliente--implementação-http-em-infrastructure)
    - 9.4 [CepEndpoints — Rota exposta na Pedidos API](#94-cependpoints--rota-exposta-na-pedidos-api)
    - 9.5 [Registro no InfrastructureServiceExtensions](#95-registro-no-infrastructureserviceextensions)
-10. [Fluxo Completo — Do HTTP ao Banco de Dados](#10-fluxo-completo--do-http-ao-banco-de-dados)
-    - 10.1 [Criar Produto (CRUD simples)](#101-criar-produto-crud-simples)
-    - 10.2 [Criar Pedido (comunicação entre serviços)](#102-criar-pedido-comunicação-entre-serviços)
-    - 10.3 [Consultar CEP (integração com API externa)](#103-consultar-cep-integração-com-api-externa)
-11. [Infraestrutura Docker](#11-infraestrutura-docker)
-12. [Diagrama de Dependências entre Projetos](#12-diagrama-de-dependências-entre-projetos)
+10. [Serviço de Clientes — CRUD Independente](#10-serviço-de-clientes--crud-independente)
+    - 10.1 [Visão Geral do Serviço de Clientes](#101-visão-geral-do-serviço-de-clientes)
+    - 10.2 [Domain — Entidade Cliente](#102-domain--entidade-cliente)
+    - 10.3 [Application — Commands e Queries](#103-application--commands-e-queries)
+    - 10.4 [Infrastructure — ClientesDbContext e Repositório](#104-infrastructure--clientesdbcontext-e-repositório)
+    - 10.5 [API — ClientesEndpoints](#105-api--clientesendpoints)
+    - 10.6 [Scalar — Interface de teste](#106-scalar--interface-de-teste)
+11. [Fluxo Completo — Do HTTP ao Banco de Dados](#11-fluxo-completo--do-http-ao-banco-de-dados)
+    - 11.1 [Criar Produto (CRUD simples)](#111-criar-produto-crud-simples)
+    - 11.2 [Criar Pedido (comunicação entre serviços)](#112-criar-pedido-comunicação-entre-serviços)
+    - 11.3 [Consultar CEP (integração com API externa)](#113-consultar-cep-integração-com-api-externa)
+    - 11.4 [Criar Cliente (CRUD independente)](#114-criar-cliente-crud-independente)
+12. [Infraestrutura Docker](#12-infraestrutura-docker)
+13. [Diagrama de Dependências entre Projetos](#13-diagrama-de-dependências-entre-projetos)
 
 ---
 
 ## 1. Visão Geral da Arquitetura Backend
 
-O backend é composto por dois microserviços independentes que seguem os mesmos princípios arquiteturais. Cada serviço tem quatro camadas internas organizadas em **Clean Architecture**:
+O backend é composto por **três microserviços independentes** que seguem os mesmos princípios arquiteturais. Cada serviço tem quatro camadas internas organizadas em **Clean Architecture**:
 
 ```
 +-------------------------------------------------------------+
-|  API  (Produtos.Api / Pedidos.Api)                          |
+|  API  (Produtos.Api / Pedidos.Api / Clientes.Api)           |
 |  Minimal APIs, Endpoints, Middleware, Program.cs            |
 |  → Recebe requisições HTTP, delega ao MediatR               |
 +-------------------------------------------------------------+
-|  APPLICATION  (Produtos.Application / Pedidos.Application)  |
+|  APPLICATION  (Produtos.App / Pedidos.App / Clientes.App)   |
 |  Commands, Queries, Handlers, Validators, Behaviors         |
 |  → Orquestra casos de uso, sem detalhes de infra            |
 +-------------------------------------------------------------+
-|  INFRASTRUCTURE  (Produtos.Infrastructure / Pedidos.Infrastructure) |
+|  INFRASTRUCTURE  (Produtos.Infra / Pedidos.Infra / Clientes.Infra) |
 |  DbContext, Repositories, Migrations, RabbitMQ, HTTP        |
 |  → Implementações concretas das abstrações                  |
 +-------------------------------------------------------------+
-|  DOMAIN  (Produtos.Domain / Pedidos.Domain)                 |
+|  DOMAIN  (Produtos.Domain / Pedidos.Domain / Clientes.Domain) |
 |  Entidades, Enums, Exceções de domínio                      |
 |  → Regras de negócio puras, zero dependências externas      |
 +-------------------------------------------------------------+
@@ -118,11 +126,17 @@ Arquitetura/
 │   │   ├── Produtos.Infrastructure/       → EF Core, migrations, RabbitMQ consumer
 │   │   └── Produtos.Api/                  → endpoints, middleware, Program.cs
 │   │
-│   └── Pedidos/
-│       ├── Pedidos.Domain/                → entidades Pedido/ItemPedido, enum status
-│       ├── Pedidos.Application/           → criar pedido, listar, consultar CEP, abstrações
-│       ├── Pedidos.Infrastructure/        → EF Core, HTTP clients (Produtos + ViaCEP), RabbitMQ
-│       └── Pedidos.Api/                   → endpoints (pedidos + CEP), middleware, Program.cs
+│   ├── Pedidos/
+│   │   ├── Pedidos.Domain/                → entidades Pedido/ItemPedido, enum status
+│   │   ├── Pedidos.Application/           → criar pedido, listar, consultar CEP, abstrações
+│   │   ├── Pedidos.Infrastructure/        → EF Core, HTTP clients (Produtos + ViaCEP), RabbitMQ
+│   │   └── Pedidos.Api/                   → endpoints (pedidos + CEP), middleware, Program.cs
+│   │
+│   └── Clientes/
+│       ├── Clientes.Domain/               → entidade Cliente, exceções
+│       ├── Clientes.Application/          → CRUD commands/queries, behaviors, abstrações
+│       ├── Clientes.Infrastructure/       → EF Core, migrations, ClientesRepository
+│       └── Clientes.Api/                  → endpoints CRUD, middleware, Program.cs
 │
 ├── Arquitetura.Frontend/                  → aplicação React 19
 ├── docker-compose.yml                     → orquestração de containers
@@ -1479,9 +1493,390 @@ services.AddHttpClient<IViaCepClient, ViaCepClient>(client =>
 
 ---
 
-## 10. Fluxo Completo — Do HTTP ao Banco de Dados
+## 10. Serviço de Clientes — CRUD Independente
 
-### 10.1 Criar Produto (CRUD simples)
+```
+Arquitetura.Backend/Clientes/
+```
+
+### 10.1 Visão Geral do Serviço de Clientes
+
+O serviço de **Clientes** é um microserviço independente que gerencia o cadastro de pessoas físicas. Diferente do serviço de Pedidos, ele **não publica nem consome eventos** e **não se comunica via HTTP com outros serviços** — é um CRUD puro com banco de dados próprio.
+
+**Características do serviço:**
+- Banco de dados próprio: `ClientesDb` (SQL Server isolado)
+- CRUD completo: criar, listar, obter por id, atualizar e excluir
+- Validação de unicidade de e-mail (índice único na tabela)
+- CPF armazenado somente com dígitos (11 caracteres)
+- Porta da API: `8080` (container) / `5003` (acesso local)
+- Scalar: `http://localhost:5003/scalar/v1`
+
+**Endpoints disponíveis:**
+
+| Método | Rota | Descrição | Status de sucesso |
+|--------|------|-----------|------------------|
+| GET | `/api/clientes` | Lista todos os clientes | 200 OK |
+| GET | `/api/clientes/{id}` | Obtém cliente por Id | 200 OK |
+| POST | `/api/clientes` | Cria um novo cliente | 201 Created |
+| PUT | `/api/clientes/{id}` | Atualiza dados do cliente | 204 No Content |
+| DELETE | `/api/clientes/{id}` | Exclui o cliente | 204 No Content |
+
+---
+
+### 10.2 Domain — Entidade Cliente
+
+```csharp
+// Arquitetura.Backend/Clientes/Clientes.Domain/Entities/Cliente.cs
+
+public sealed class Cliente : Entity
+{
+    private Cliente() { }  // construtor para o EF Core
+
+    private Cliente(Guid id, string nome, string email, string cpf)
+        : base(id)
+    {
+        Nome = nome;
+        Email = email;
+        Cpf = cpf;
+        CriadoEm = DateTime.UtcNow;
+    }
+
+    public string Nome { get; private set; } = string.Empty;
+    public string Email { get; private set; } = string.Empty;
+    public string Cpf { get; private set; } = string.Empty;  // somente dígitos, 11 chars
+    public DateTime CriadoEm { get; private set; }
+    public DateTime? AtualizadoEm { get; private set; }
+
+    public static Cliente Criar(string nome, string email, string cpf)
+    {
+        if (string.IsNullOrWhiteSpace(nome))
+            throw new ClienteException("O nome do cliente é obrigatório.");
+        if (string.IsNullOrWhiteSpace(email))
+            throw new ClienteException("O email do cliente é obrigatório.");
+        if (string.IsNullOrWhiteSpace(cpf))
+            throw new ClienteException("O CPF do cliente é obrigatório.");
+
+        return new Cliente(Guid.NewGuid(), nome.Trim(), email.Trim(), cpf);
+    }
+
+    public void Atualizar(string nome, string email, string cpf)
+    {
+        if (string.IsNullOrWhiteSpace(nome))
+            throw new ClienteException("O nome do cliente é obrigatório.");
+        if (string.IsNullOrWhiteSpace(email))
+            throw new ClienteException("O email do cliente é obrigatório.");
+        if (string.IsNullOrWhiteSpace(cpf))
+            throw new ClienteException("O CPF do cliente é obrigatório.");
+
+        Nome = nome.Trim();
+        Email = email.Trim();
+        Cpf = cpf;
+        AtualizadoEm = DateTime.UtcNow;
+    }
+}
+```
+
+**Por que CPF sem formatação?**
+O banco armazena apenas os 11 dígitos (`78754801672`). A formatação (`787.548.016-72`) é responsabilidade da camada de apresentação (frontend). Isso evita inconsistências de comparação e facilita queries.
+
+---
+
+### 10.3 Application — Commands e Queries
+
+O serviço de Clientes implementa três commands e duas queries seguindo o mesmo padrão CQRS dos outros serviços.
+
+**Abstrações (interfaces):**
+
+```csharp
+// Clientes.Application/Abstractions/IClienteRepository.cs
+public interface IClienteRepository
+{
+    Task<Cliente?> ObterPorIdAsync(Guid id, CancellationToken ct = default);
+    Task<IReadOnlyList<Cliente>> ListarAsync(CancellationToken ct = default);
+    Task AdicionarAsync(Cliente cliente, CancellationToken ct = default);
+    void Atualizar(Cliente cliente);  // síncrono — EF Core rastreia o objeto
+    void Remover(Cliente cliente);
+}
+```
+
+**CriarClienteCommand:**
+
+```csharp
+public sealed record CriarClienteCommand(
+    string Nome,
+    string Email,
+    string Cpf) : IRequest<Result<Guid>>;
+
+internal sealed class CriarClienteCommandHandler(
+    IClienteRepository repository,
+    IUnitOfWork unitOfWork) : IRequestHandler<CriarClienteCommand, Result<Guid>>
+{
+    public async Task<Result<Guid>> Handle(CriarClienteCommand request, CancellationToken ct)
+    {
+        var cliente = Cliente.Criar(request.Nome, request.Email, request.Cpf);
+        await repository.AdicionarAsync(cliente, ct);
+        await unitOfWork.SaveChangesAsync(ct);
+        return Result.Success(cliente.Id);
+    }
+}
+
+internal sealed class CriarClienteCommandValidator : AbstractValidator<CriarClienteCommand>
+{
+    public CriarClienteCommandValidator()
+    {
+        RuleFor(x => x.Nome).NotEmpty().MaximumLength(200);
+        RuleFor(x => x.Email).NotEmpty().EmailAddress();
+        RuleFor(x => x.Cpf).NotEmpty().Length(11)
+            .WithMessage("O CPF deve ter 11 caracteres (somente dígitos).");
+    }
+}
+```
+
+**AtualizarClienteCommand:**
+
+```csharp
+public sealed record AtualizarClienteCommand(
+    Guid Id,
+    string Nome,
+    string Email,
+    string Cpf) : IRequest<Result>;
+
+internal sealed class AtualizarClienteCommandHandler(
+    IClienteRepository repository,
+    IUnitOfWork unitOfWork) : IRequestHandler<AtualizarClienteCommand, Result>
+{
+    public async Task<Result> Handle(AtualizarClienteCommand request, CancellationToken ct)
+    {
+        var cliente = await repository.ObterPorIdAsync(request.Id, ct);
+        if (cliente is null)
+            return Result.Failure(new Error("Cliente.NaoEncontrado", "Cliente não encontrado."));
+
+        cliente.Atualizar(request.Nome, request.Email, request.Cpf);
+        repository.Atualizar(cliente);
+        await unitOfWork.SaveChangesAsync(ct);
+        return Result.Success();
+    }
+}
+```
+
+**ExcluirClienteCommand:**
+
+```csharp
+public sealed record ExcluirClienteCommand(Guid Id) : IRequest<Result>;
+
+internal sealed class ExcluirClienteCommandHandler(
+    IClienteRepository repository,
+    IUnitOfWork unitOfWork) : IRequestHandler<ExcluirClienteCommand, Result>
+{
+    public async Task<Result> Handle(ExcluirClienteCommand request, CancellationToken ct)
+    {
+        var cliente = await repository.ObterPorIdAsync(request.Id, ct);
+        if (cliente is null)
+            return Result.Failure(new Error("Cliente.NaoEncontrado", "Cliente não encontrado."));
+
+        repository.Remover(cliente);
+        await unitOfWork.SaveChangesAsync(ct);
+        return Result.Success();
+    }
+}
+```
+
+**Queries:**
+
+```csharp
+// Lista todos — sem parâmetro
+public sealed record ListaClientesQuery : IRequest<Result<IReadOnlyList<Cliente>>>;
+
+// Busca por Id
+public sealed record ObterClientesPorIdQuery(Guid Id) : IRequest<Result<Cliente>>;
+```
+
+---
+
+### 10.4 Infrastructure — ClientesDbContext e Repositório
+
+**DbContext:**
+
+```csharp
+// Clientes.Infrastructure/Data/ClientesDbContext.cs
+public sealed class ClientesDbContext(DbContextOptions<ClientesDbContext> options)
+    : DbContext(options), IUnitOfWork
+{
+    public DbSet<Cliente> Clientes => Set<Cliente>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(ClientesDbContext).Assembly);
+        base.OnModelCreating(modelBuilder);
+    }
+}
+```
+
+**Configuração da entidade:**
+
+```csharp
+// Clientes.Infrastructure/Data/Configurations/ClienteConfiguration.cs
+internal sealed class ClienteConfiguration : IEntityTypeConfiguration<Cliente>
+{
+    public void Configure(EntityTypeBuilder<Cliente> builder)
+    {
+        builder.HasKey(c => c.Id);
+
+        builder.Property(c => c.Nome).IsRequired().HasMaxLength(200);
+        builder.Property(c => c.Email).IsRequired().HasMaxLength(254);
+        builder.Property(c => c.Cpf).IsRequired().HasMaxLength(11);
+        builder.Property(c => c.CriadoEm).IsRequired();
+
+        // Unicidade de e-mail — impede duplicatas no banco
+        builder.HasIndex(c => c.Email).IsUnique();
+    }
+}
+```
+
+**Repositório:**
+
+```csharp
+// Clientes.Infrastructure/Repositories/ClientesRepository.cs
+internal sealed class ClienteRepository(ClientesDbContext context) : IClienteRepository
+{
+    public async Task<Cliente?> ObterPorIdAsync(Guid id, CancellationToken ct = default) =>
+        await context.Clientes.FirstOrDefaultAsync(c => c.Id == id, ct);
+
+    public async Task<IReadOnlyList<Cliente>> ListarAsync(CancellationToken ct = default) =>
+        await context.Clientes.AsNoTracking().ToListAsync(ct);
+
+    public async Task AdicionarAsync(Cliente cliente, CancellationToken ct = default) =>
+        await context.Clientes.AddAsync(cliente, ct);
+
+    public void Atualizar(Cliente cliente) =>
+        context.Clientes.Update(cliente);
+
+    public void Remover(Cliente cliente) =>
+        context.Clientes.Remove(cliente);
+}
+```
+
+**Migration inicial:**
+
+A migration `InitialCreate` cria a tabela `Clientes` com índice único em `Email`:
+
+```sql
+-- Gerado automaticamente pela migration InitialCreate
+CREATE TABLE [Clientes] (
+    [Id]          UNIQUEIDENTIFIER NOT NULL,
+    [Nome]        NVARCHAR(200)    NOT NULL,
+    [Email]       NVARCHAR(254)    NOT NULL,
+    [Cpf]         NVARCHAR(11)     NOT NULL,
+    [CriadoEm]    DATETIME2        NOT NULL,
+    [AtualizadoEm] DATETIME2       NULL,
+    CONSTRAINT [PK_Clientes] PRIMARY KEY ([Id])
+);
+
+CREATE UNIQUE INDEX [IX_Clientes_Email] ON [Clientes] ([Email]);
+```
+
+**Gerar nova migration:**
+```bash
+dotnet ef migrations add NomeDaMigration \
+  --project Arquitetura.Backend/Clientes/Clientes.Infrastructure/Clientes.Infrastructure \
+  --startup-project Arquitetura.Backend/Clientes/Clientes.Api/Clientes.Api
+```
+
+---
+
+### 10.5 API — ClientesEndpoints
+
+```csharp
+// Clientes.Api/Endpoints/ClientesEndpoints.cs
+public static class ClientesEndpoints
+{
+    public static IEndpointRouteBuilder MapClientesEndpoints(this IEndpointRouteBuilder app)
+    {
+        var group = app.MapGroup("/api/clientes").WithTags("Clientes");
+
+        group.MapGet("/", ListarAsync)
+             .WithSummary("Lista todos os clientes");
+
+        group.MapGet("/{id:guid}", ObterPorIdAsync)
+             .WithSummary("Obtém um cliente pelo Id");
+
+        group.MapPost("/", CriarAsync)
+             .WithName("CriarCliente")
+             .WithSummary("Cria um novo cliente");
+
+        group.MapPut("/{id:guid}", AtualizarAsync)
+             .WithSummary("Atualiza um cliente existente");
+
+        group.MapDelete("/{id:guid}", ExcluirAsync)
+             .WithSummary("Exclui um cliente");
+
+        return app;
+    }
+
+    private static async Task<IResult> CriarAsync(
+        CriarClienteCommand command, ISender sender, CancellationToken ct)
+    {
+        var result = await sender.Send(command, ct);
+        return result.IsSuccess
+            ? Results.CreatedAtRoute("CriarCliente", new { id = result.Value }, result.Value)
+            : Results.BadRequest(result.Error);
+    }
+
+    private static async Task<IResult> AtualizarAsync(
+        Guid id, AtualizarClienteRequest request, ISender sender, CancellationToken ct)
+    {
+        var command = new AtualizarClienteCommand(id, request.Nome, request.Email, request.Cpf);
+        var result = await sender.Send(command, ct);
+        return result.IsSuccess ? Results.NoContent() : Results.NotFound(result.Error);
+    }
+
+    private static async Task<IResult> ExcluirAsync(
+        Guid id, ISender sender, CancellationToken ct)
+    {
+        var result = await sender.Send(new ExcluirClienteCommand(id), ct);
+        return result.IsSuccess ? Results.NoContent() : Results.NotFound(result.Error);
+    }
+
+    // ... ListarAsync e ObterPorIdAsync seguem o mesmo padrão das outras APIs
+}
+
+// Request body para o PUT — separado do Command para não expor Id na URL e no body
+internal sealed record AtualizarClienteRequest(string Nome, string Email, string Cpf);
+```
+
+**Por que `AtualizarClienteRequest` separado do `AtualizarClienteCommand`?**
+O `id` vem da URL (`/{id:guid}`) e o body carrega apenas os dados mutáveis. O endpoint combina os dois para criar o Command, evitando que o cliente precise repetir o id no body (o que poderia gerar inconsistência).
+
+---
+
+### 10.6 Scalar — Interface de teste
+
+```
+http://localhost:5003/scalar/v1
+```
+
+**Exemplo — criar cliente via Scalar:**
+```
+POST /api/clientes
+Content-Type: application/json
+
+{
+    "nome": "Maria Silva",
+    "email": "maria@email.com",
+    "cpf": "12345678901"
+}
+
+HTTP 201 Created
+"3fa85f64-5717-4562-b3fc-2c963f66afa6"
+```
+
+> **Atenção:** o CPF deve ser enviado **somente com dígitos** (11 caracteres). O frontend remove a máscara antes de enviar — `"787.548.016-72"` → `"78754801672"`.
+
+---
+
+## 11. Fluxo Completo — Do HTTP ao Banco de Dados
+
+### 11.1 Criar Produto (CRUD simples)
 
 ```
 Cliente (React/Scalar)
@@ -1521,7 +1916,7 @@ MediatR Pipeline
 HTTP Response: 201 Created | Location: /api/produtos/{id} | Body: "{guid}"
 ```
 
-### 10.2 Criar Pedido (comunicação entre serviços)
+### 11.2 Criar Pedido (comunicação entre serviços)
 
 ```
 Cliente
@@ -1566,7 +1961,7 @@ HTTP Response: 201 Created | Body: "{pedidoId}"
 → retorna ANTES do consumer terminar (consistência eventual)
 ```
 
-### 10.3 Consultar CEP (integração com API externa)
+### 11.3 Consultar CEP (integração com API externa)
 
 ```
 Cliente
@@ -1601,7 +1996,69 @@ HTTP Response: 200 OK | Body: { "cep": "01310-100", "logradouro": "Av. Paulista"
 
 ---
 
-## 11. Infraestrutura Docker
+### 11.4 Criar Cliente (CRUD independente)
+
+```
+Cliente (React/Scalar)
+  →  POST /api/clientes/
+  →  Body: { "nome": "Maria Silva", "email": "maria@email.com", "cpf": "12345678901" }
+  ↓
+ExceptionHandlingMiddleware
+  →  inicia bloco try
+  ↓
+ClientesEndpoints.CriarAsync
+  →  sender.Send(CriarClienteCommand, ct)
+  ↓
+MediatR Pipeline
+  ↓
+  +- LoggingBehavior → LogInformation("Processando CriarClienteCommand")
+  ↓
+  +- ValidationBehavior → CriarClienteCommandValidator.Validate(command)
+  |     +- FALHA (cpf != 11 chars, email inválido, nome vazio)
+  |     |    → throw ValidationException → Middleware → 422 + lista de erros
+  |     +- OK → next(ct)
+  ↓
+  +- CriarClienteCommandHandler.Handle(command, ct)
+       ↓
+       +- Cliente.Criar(nome, email, cpf)
+       |     +- FALHA → throw ClienteException → Middleware → 400
+       |     +- OK → new Cliente(Guid.NewGuid(), ...)
+       ↓
+       +- repository.AdicionarAsync(cliente)   → change tracker: INSERT pendente
+       ↓
+       +- unitOfWork.SaveChangesAsync()
+              → EF Core gera:
+            INSERT INTO Clientes (Id, Nome, Email, Cpf, CriadoEm) VALUES (...)
+              ↓
+           return Result.Success(cliente.Id)
+              ↓
+           Results.CreatedAtRoute("CriarCliente", { id }, guid)
+
+HTTP Response: 201 Created | Location: /api/clientes/{id} | Body: "{guid}"
+```
+
+**Fluxo de atualização:**
+```
+PUT /api/clientes/{id}
+  →  Body: { "nome": "Maria Santos", "email": "maria@novo.com", "cpf": "12345678901" }
+  ↓
+AtualizarClienteCommandHandler
+  +- repository.ObterPorIdAsync(id)   → busca com tracking (sem AsNoTracking)
+  |     +- null → Result.Failure("Cliente.NaoEncontrado") → 404
+  ↓
+  +- cliente.Atualizar(nome, email, cpf)  → atualiza props + AtualizadoEm = UtcNow
+  ↓
+  +- repository.Atualizar(cliente)        → marca como Modified no change tracker
+  ↓
+  +- unitOfWork.SaveChangesAsync()
+         UPDATE Clientes SET Nome=..., Email=..., AtualizadoEm=... WHERE Id=...
+
+HTTP Response: 204 No Content
+```
+
+---
+
+## 12. Infraestrutura Docker
 
 ```yaml
 # docker-compose.yml (resumo dos principais serviços)
@@ -1616,6 +2073,11 @@ services:
 
   sqlserver-pedidos:           # banco isolado para Pedidos
     image: mcr.microsoft.com/mssql/server:2022-latest
+
+  sqlserver-clientes:          # banco isolado para Clientes
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    volumes:
+      - sqlserver-clientes-data:/var/opt/mssql
 
   rabbitmq:
     image: rabbitmq:3-management
@@ -1647,26 +2109,45 @@ services:
       rabbitmq:          { condition: service_healthy }
       # Nota: ViaCEP é uma API pública — sem dependência de container
 
+  clientes-api:
+    build:
+      context: .
+      dockerfile: Arquitetura.Backend/Clientes/Clientes.Api/Clientes.Api/Dockerfile
+    environment:
+      ConnectionStrings__ClientesConnection: "Server=sqlserver-clientes;..."
+    ports:
+      - "5003:8080"    # acesso local para testes / Scalar
+    depends_on:
+      sqlserver-clientes: { condition: service_healthy }
+
   frontend:
     build:
       context: Arquitetura.Frontend
       dockerfile: Dockerfile
     ports:
-      - "3000:80"
+      - "8080:80"      # porta 80 reservada no Windows; usar 8080
     depends_on:
       - produtos-api
       - pedidos-api
+      - clientes-api
+
+volumes:
+  sqlserver-produtos-data:
+  sqlserver-pedidos-data:
+  sqlserver-clientes-data:
 ```
 
 **`depends_on` com `condition: service_healthy`:** garante que os containers dependentes só iniciam quando banco e RabbitMQ estão respondendo ao healthcheck, evitando falhas de conexão no startup.
 
-**Resolução de nome entre containers:** dentro da rede Docker, `produtos-api` resolve para o IP do container de mesmo nome. `pedidos-api` chama `http://produtos-api:8080` sem conhecer o IP real.
+**Resolução de nome entre containers:** dentro da rede Docker, `produtos-api` resolve para o IP do container de mesmo nome. `pedidos-api` chama `http://produtos-api:8080` sem conhecer o IP real. `clientes-api` não se comunica com outros containers de API — acessa apenas seu próprio `sqlserver-clientes`.
 
 **ViaCEP e Docker:** a integração com ViaCEP usa a internet pública — não requer container adicional. O `pedidos-api` precisa apenas de acesso à rede externa, o que é o comportamento padrão do Docker.
 
+**Porta do frontend (8080:80):** a porta 80 é reservada pelo HTTP.sys do Windows, portanto o host usa 8080. Dentro do container o Nginx ainda serve na porta 80.
+
 ---
 
-## 12. Diagrama de Dependências entre Projetos
+## 13. Diagrama de Dependências entre Projetos
 
 ```
 Arquitetura.SharedKernel
@@ -1682,13 +2163,23 @@ Arquitetura.SharedKernel
   |     +-- (não referencia Infrastructure nem Api)
   |
   +-- Pedidos.Domain
+  |     ↑
+  |     +-- Pedidos.Application
+  |     |     ↑ define: IPedidoRepository, IUnitOfWork,
+  |     |     |         IProdutosServiceClient, IViaCepClient, IEventPublisher
+  |     |     |
+  |     |     +-- Pedidos.Infrastructure  (implementa todas as abstrações acima)
+  |     |     +-- Pedidos.Api             (consome via MediatR + ISender)
+  |     |
+  |     +-- (não referencia Infrastructure nem Api)
+  |
+  +-- Clientes.Domain
         ↑
-        +-- Pedidos.Application
-        |     ↑ define: IPedidoRepository, IUnitOfWork,
-        |     |         IProdutosServiceClient, IViaCepClient, IEventPublisher
+        +-- Clientes.Application
+        |     ↑ define: IClienteRepository, IUnitOfWork
         |     |
-        |     +-- Pedidos.Infrastructure  (implementa todas as abstrações acima)
-        |     +-- Pedidos.Api             (consome via MediatR + ISender)
+        |     +-- Clientes.Infrastructure  (implementa IClienteRepository, IUnitOfWork)
+        |     +-- Clientes.Api             (consome via MediatR + ISender)
         |
         +-- (não referencia Infrastructure nem Api)
 
@@ -1696,6 +2187,8 @@ Comunicação entre serviços:
   Pedidos.Infrastructure.Http.ProdutosServiceClient  →  (HTTP)      →  Produtos.Api
   Pedidos.Infrastructure.Http.ViaCepClient           →  (HTTPS)     →  viacep.com.br (externo)
   Pedidos.Infrastructure.Messaging                   →  (RabbitMQ)  →  Produtos.Infrastructure.Messaging
+
+  Clientes.Api  →  (nenhuma comunicação entre serviços — CRUD isolado)
 ```
 
 **Regra de dependência (Clean Architecture):** as setas apontam sempre para dentro. O Domain é completamente isolado. A Infrastructure conhece o Domain e o Application, mas nunca é conhecida por eles — apenas implementa as interfaces definidas em Application.
