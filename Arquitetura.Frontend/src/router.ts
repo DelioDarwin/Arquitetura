@@ -7,6 +7,9 @@ import { EditarProdutoPage } from '@/pages/produtos/EditarProdutoPage';
 import { PedidosPage } from '@/pages/pedidos/PedidosPage';
 import { NovoPedidoPage } from '@/pages/pedidos/NovoPedidoPage';
 import { ConsultaCepPage } from '@/pages/cep/ConsultaCepPage';
+import { ClientesPage } from '@/pages/cliente/ClientesPage';
+import { NovoClientePage } from '@/pages/cliente/NovoClientePage';
+import { EditarClientePage } from '@/pages/cliente/EditarClientePage';
 
 const rootRoute = createRootRoute({ component: RootLayout });
 
@@ -17,6 +20,9 @@ const editarProdutoRoute = createRoute({ getParentRoute: () => rootRoute, path: 
 const pedidosRoute = createRoute({ getParentRoute: () => rootRoute, path: '/pedidos', component: PedidosPage });
 const novoPedidoRoute = createRoute({ getParentRoute: () => rootRoute, path: '/pedidos/novo', component: NovoPedidoPage });
 const cepRoute = createRoute({ getParentRoute: () => rootRoute, path: '/cep', component: ConsultaCepPage });
+const clientesRoute = createRoute({ getParentRoute: () => rootRoute, path: '/clientes', component: ClientesPage });
+const novoClienteRoute = createRoute({ getParentRoute: () => rootRoute, path: '/clientes/novo', component: NovoClientePage });
+const editarClienteRoute = createRoute({ getParentRoute: () => rootRoute, path: '/clientes/$id/editar', component: EditarClientePage });
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
@@ -26,6 +32,9 @@ const routeTree = rootRoute.addChildren([
   pedidosRoute,
   novoPedidoRoute,
   cepRoute,
+  clientesRoute,
+  novoClienteRoute,
+  editarClienteRoute,
 ]);
 
 export const router = createRouter({ routeTree });
@@ -35,4 +44,3 @@ declare module '@tanstack/react-router' {
     router: typeof router;
   }
 }
-

@@ -5,7 +5,23 @@
 
 🏛️ "Microservices Reference Architecture" com as seguintes camadas conceituais:
 
-- --
+---
+
+## ▶️ Execução Rápida
+
+**Backend (todos os serviços via Docker):**
+```bash
+docker compose up --build
+```
+
+**Frontend (desenvolvimento local):**
+```bash
+cd Arquitetura.Frontend
+npm install        # só na primeira vez
+npm run dev
+```
+
+---
 
 ### Estilo Arquitetural
 

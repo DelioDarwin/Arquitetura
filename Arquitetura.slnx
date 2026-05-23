@@ -1,4 +1,8 @@
 <Solution>
+  <Project Path="Arquitetura.Backend/Clientes/Clientes.Api/Clientes.Api/Clientes.Api.csproj" Id="ae6328fe-84ef-4ce7-88a3-78aac9e04410" />
+  <Project Path="Arquitetura.Backend/Clientes/Clientes.Application/Clientes.Application/Clientes.Application.csproj" Id="e2195678-7581-4df6-9596-3ff77190baaf" />
+  <Project Path="Arquitetura.Backend/Clientes/Clientes.Domain/Clientes.Domain/Clientes.Domain.csproj" Id="65aff2b3-c095-49e3-b38f-8bd736486323" />
+  <Project Path="Arquitetura.Backend/Clientes/Clientes.Infrastructure/Clientes.Infrastructure/Clientes.Infrastructure.csproj" Id="99bb4e8f-37b8-4f58-8987-5bedcbc66ac2" />
   <Project Path="Arquitetura.Backend/Pedidos/Pedidos.Api/Pedidos.Api.csproj" />
   <Project Path="Arquitetura.Backend/Pedidos/Pedidos.Application/Pedidos.Application.csproj" />
   <Project Path="Arquitetura.Backend/Pedidos/Pedidos.Domain/Pedidos.Domain.csproj" />

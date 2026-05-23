@@ -1,0 +1,16 @@
+D:\Arquiteturas\Arquitetura_1\Arquitetura\Arquitetura.Backend\Clientes\Clientes.Domain\Clientes.Domain\bin\Debug\net10.0\Clientes.Domain.deps.json
+D:\Arquiteturas\Arquitetura_1\Arquitetura\Arquitetura.Backend\Clientes\Clientes.Domain\Clientes.Domain\bin\Debug\net10.0\Clientes.Domain.dll
+D:\Arquiteturas\Arquitetura_1\Arquitetura\Arquitetura.Backend\Clientes\Clientes.Domain\Clientes.Domain\bin\Debug\net10.0\Clientes.Domain.pdb
+D:\Arquiteturas\Arquitetura_1\Arquitetura\Arquitetura.Backend\Clientes\Clientes.Domain\Clientes.Domain\bin\Debug\net10.0\Arquitetura.SharedKernel.dll
+D:\Arquiteturas\Arquitetura_1\Arquitetura\Arquitetura.Backend\Clientes\Clientes.Domain\Clientes.Domain\bin\Debug\net10.0\Arquitetura.SharedKernel.pdb
+D:\Arquiteturas\Arquitetura_1\Arquitetura\Arquitetura.Backend\Clientes\Clientes.Domain\Clientes.Domain\obj\Debug\net10.0\Clientes.Domain.csproj.AssemblyReference.cache
+D:\Arquiteturas\Arquitetura_1\Arquitetura\Arquitetura.Backend\Clientes\Clientes.Domain\Clientes.Domain\obj\Debug\net10.0\Clientes.Domain.GeneratedMSBuildEditorConfig.editorconfig
+D:\Arquiteturas\Arquitetura_1\Arquitetura\Arquitetura.Backend\Clientes\Clientes.Domain\Clientes.Domain\obj\Debug\net10.0\Clientes.Domain.AssemblyInfoInputs.cache
+D:\Arquiteturas\Arquitetura_1\Arquitetura\Arquitetura.Backend\Clientes\Clientes.Domain\Clientes.Domain\obj\Debug\net10.0\Clientes.Domain.AssemblyInfo.cs
+D:\Arquiteturas\Arquitetura_1\Arquitetura\Arquitetura.Backend\Clientes\Clientes.Domain\Clientes.Domain\obj\Debug\net10.0\Clientes.Domain.csproj.CoreCompileInputs.cache
+D:\Arquiteturas\Arquitetura_1\Arquitetura\Arquitetura.Backend\Clientes\Clientes.Domain\Clientes.Domain\obj\Debug\net10.0\Clientes.Domain.sourcelink.json
+D:\Arquiteturas\Arquitetura_1\Arquitetura\Arquitetura.Backend\Clientes\Clientes.Domain\Clientes.Domain\obj\Debug\net10.0\Clientes.033032D7.Up2Date
+D:\Arquiteturas\Arquitetura_1\Arquitetura\Arquitetura.Backend\Clientes\Clientes.Domain\Clientes.Domain\obj\Debug\net10.0\Clientes.Domain.dll
+D:\Arquiteturas\Arquitetura_1\Arquitetura\Arquitetura.Backend\Clientes\Clientes.Domain\Clientes.Domain\obj\Debug\net10.0\refint\Clientes.Domain.dll
+D:\Arquiteturas\Arquitetura_1\Arquitetura\Arquitetura.Backend\Clientes\Clientes.Domain\Clientes.Domain\obj\Debug\net10.0\Clientes.Domain.pdb
+D:\Arquiteturas\Arquitetura_1\Arquitetura\Arquitetura.Backend\Clientes\Clientes.Domain\Clientes.Domain\obj\Debug\net10.0\ref\Clientes.Domain.dll

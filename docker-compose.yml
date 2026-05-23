@@ -41,6 +41,27 @@ services:
       retries: 5
       start_period: 30s
 
+  sqlserver-clientes:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: sqlserver-clientes
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=${SA_PASSWORD}
+      - MSSQL_PID=Express
+    ports:
+      - "1435:1433"
+    volumes:
+      - sqlserver-clientes-data:/var/opt/mssql
+    networks:
+      - arquitetura-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/opt/mssql-tools18/bin/sqlcmd", "-S", "localhost", "-U", "sa", "-P", "${SA_PASSWORD}", "-Q", "SELECT 1", "-C"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
   rabbitmq:
     image: rabbitmq:3.13-management
     container_name: rabbitmq
@@ -123,6 +144,33 @@ services:
       retries: 3
       start_period: 15s
 
+  clientes-api:
+    build:
+      context: .
+      dockerfile: Arquitetura.Backend/Clientes/Clientes.Api/Clientes.Api/Dockerfile
+    image: arquitetura/clientes-api:latest
+    container_name: clientes-api
+    ports:
+      - "5003:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__ClientesConnection=Server=sqlserver-clientes;Database=ClientesDb;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True;
+      - Services__ProdutosUrl=http://produtos-api:8080
+    networks:
+      - arquitetura-net
+    restart: unless-stopped
+    depends_on:
+      sqlserver-clientes:
+        condition: service_healthy
+      produtos-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
   frontend:
     build:
       context: Arquitetura.Frontend
@@ -130,7 +178,7 @@ services:
     image: arquitetura/frontend:latest
     container_name: frontend
     ports:
-      - "80:80"
+      - "8080:80"
     networks:
       - arquitetura-net
     restart: unless-stopped
@@ -138,6 +186,8 @@ services:
       produtos-api:
         condition: service_healthy
       pedidos-api:
+        condition: service_healthy
+      clientes-api:
         condition: service_healthy
 
 networks:
@@ -147,4 +197,5 @@ networks:
 volumes:
   sqlserver-produtos-data:
   sqlserver-pedidos-data:
+  sqlserver-clientes-data:
   rabbitmq-data:
